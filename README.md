@@ -78,8 +78,11 @@ a 2-person shop), so there's a small CLI script instead:
 npm run seed:technician -- "Your Name"
 ```
 
-This prints a raw API key **once** -- save it. Only its SHA-256 hash is stored in the DB. The
-PC-side client sends this as `X-Api-Key` on every request.
+This prints a raw API key **once** -- save it. Only its SHA-256 hash is stored in the DB. It's also
+written to `api_keys/<name>.txt` (git-ignored, see `api_keys/README.md`) -- that file's contents
+are exactly what `Luxtronic-PCTools-Client`'s `ApiKeyProvider` expects, so provisioning a technician
+is: run this command, then copy the resulting file onto their PC and rename it to `apikey.txt` next
+to the client executable. The PC-side client sends the key as `X-Api-Key` on every request.
 
 ### 6. Start the server
 

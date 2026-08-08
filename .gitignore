@@ -4,3 +4,7 @@ node_modules/
 npm-debug.log*
 .DS_Store
 Thumbs.db
+
+# Raw technician API keys (see api_keys/README.md) -- secrets, never commit these.
+api_keys/*
+!api_keys/README.md
