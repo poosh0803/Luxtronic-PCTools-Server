@@ -1,0 +1,29 @@
+{
+  "cpu": {
+    "tool": "prime95",
+    "mode": "blend",
+    "duration_minutes": 60,
+    "max_temp_c": 95
+  },
+  "gpu": {
+    "tool": "furmark",
+    "duration_minutes": 20,
+    "max_temp_c": 90
+  },
+  "ram": {
+    "tool": "tm5",
+    "config_profile": "anta777-extreme",
+    "duration_minutes": 60,
+    "max_errors": 0
+  },
+  "ssd": {
+    "tool": "crystaldiskmark",
+    "min_seq_read_mb_s": 400,
+    "min_seq_write_mb_s": 300,
+    "smart_reallocated_sectors_max": 0
+  },
+  "concurrency": {
+    "cpu_gpu_together_allowed": true,
+    "exclusive_components": ["ram", "ssd"]
+  }
+}
