@@ -77,3 +77,18 @@ test('missing summary_stats keys for a given config threshold are simply not eva
   const r = computeResult('cpu', config, { error_count: 0 }, null);
   assert.equal(r.result, 'pass');
 });
+
+// README.md's "Scope notes and judgment calls" section (#3) calls this out explicitly: a
+// summary_stats value landing exactly at a configured threshold currently resolves to `flagged`,
+// not `fail` or `pass`, for BOTH max_ and min_ style limits (only the max_ case -- max_temp_c
+// exactly at 95 -- is covered above). Locking in the min_ side here too, so a future change to
+// this boundary behavior is a deliberate test update rather than a silent drift.
+test('normal finish, min_seq_read_mb_s exactly at the minimum -> flagged, not fail or pass', () => {
+  const r = computeResult(
+    'ssd',
+    config,
+    { min_seq_read_mb_s: 400, min_seq_write_mb_s: 1000 }, // read exactly at the 400 minimum; write comfortably clear
+    null
+  );
+  assert.equal(r.result, 'flagged');
+});
