@@ -60,16 +60,19 @@ function drawTelemetryChart(doc, telemetry, x, y, width, height, title) {
   }
 
   const allTs = telemetry.map((p) => new Date(p.ts).getTime());
-  const allValues = telemetry.map((p) => p.value);
   const minTs = Math.min(...allTs);
   const maxTs = Math.max(...allTs);
-  const minVal = Math.min(0, Math.min(...allValues));
-  const maxVal = Math.max(...allValues) * 1.05 || 1;
 
   const plotX = x + 4;
   const plotWidth = width - 8;
   const plotY = chartTop;
-  const plotHeight = chartHeight - 14; // leave room for legend
+  // Legend is one row per series (see below) rather than one wrapped line -- the chart column is
+  // narrow (it shares the page with the summary table) and each row now carries a value range
+  // annotation, so a single-line legend would overflow the column width. Reserve height for it
+  // up front based on how many series there are.
+  const legendRowHeight = 9;
+  const legendHeight = Math.max(14, bySensor.size * legendRowHeight + 4);
+  const plotHeight = chartHeight - legendHeight;
 
   // Axes
   doc
@@ -82,21 +85,37 @@ function drawTelemetryChart(doc, telemetry, x, y, width, height, title) {
 
   const tsToX = (ts) =>
     maxTs === minTs ? plotX : plotX + ((ts - minTs) / (maxTs - minTs)) * plotWidth;
-  const valToY = (v) =>
-    maxVal === minVal
-      ? plotY + plotHeight
-      : plotY + plotHeight - ((v - minVal) / (maxVal - minVal)) * plotHeight;
 
+  // Each sensor gets its own value range, normalized independently to the same plot height.
+  // Sensors on this system have wildly different scales (a CPU temp in the 40s-90s C, load as a
+  // 0-100 pct, fan speed in the thousands of RPM) -- sharing one axis across all of them makes the
+  // smaller-magnitude series flatten to an invisible line at the bottom. Since this is a vector
+  // chart with no rendered per-axis tick labels (unlike the live dashboard's Chart.js chart), the
+  // legend below carries each series' actual observed min-max range so the normalization doesn't
+  // lose that information.
   let colorIdx = 0;
   const legendItems = [];
   for (const [sensorName, points] of bySensor) {
     const color = SERIES_COLORS[colorIdx % SERIES_COLORS.length];
     colorIdx += 1;
-    legendItems.push({ sensorName, color });
 
     const sorted = [...points].sort((a, b) => new Date(a.ts) - new Date(b.ts));
     const step = Math.max(1, Math.floor(sorted.length / 400));
     const sampled = sorted.filter((_, i) => i % step === 0);
+
+    const seriesValues = sampled.map((p) => p.value);
+    const seriesMin = Math.min(0, Math.min(...seriesValues));
+    const seriesMax = Math.max(...seriesValues) * 1.05 || 1;
+    legendItems.push({
+      sensorName,
+      color,
+      range: `${Math.min(...seriesValues).toFixed(1)}-${Math.max(...seriesValues).toFixed(1)}`,
+    });
+
+    const valToY = (v) =>
+      seriesMax === seriesMin
+        ? plotY + plotHeight
+        : plotY + plotHeight - ((v - seriesMin) / (seriesMax - seriesMin)) * plotHeight;
 
     doc.strokeColor(color).lineWidth(1);
     sampled.forEach((p, i) => {
@@ -108,14 +127,17 @@ function drawTelemetryChart(doc, telemetry, x, y, width, height, title) {
     doc.stroke();
   }
 
-  // Legend
-  let legendX = plotX;
-  const legendY = plotY + plotHeight + 4;
+  // Legend: one row per series (not flowed horizontally) -- each entry is annotated with that
+  // series' own value range, since the plot normalizes every series independently rather than
+  // sharing one axis (see comment above), and this column is too narrow for that plus 2-3 sensor
+  // names to fit on a single line without pdfkit's auto-wrap mangling it character-by-character.
+  let legendY = plotY + plotHeight + 4;
   doc.fontSize(7).font('Helvetica');
   for (const item of legendItems) {
-    doc.rect(legendX, legendY + 1, 6, 6).fill(item.color);
-    doc.fillColor('#333').text(item.sensorName, legendX + 9, legendY, { continued: false });
-    legendX += doc.widthOfString(item.sensorName) + 24;
+    const label = `${item.sensorName} (${item.range})`;
+    doc.rect(plotX, legendY + 1, 6, 6).fill(item.color);
+    doc.fillColor('#333').text(label, plotX + 9, legendY, { width: plotWidth - 9, continued: false });
+    legendY += legendRowHeight;
   }
 
   doc.restore();

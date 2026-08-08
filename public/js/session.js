@@ -92,16 +92,53 @@ function destroyAllCharts() {
   chartState.clear();
 }
 
+// Each sensor gets its own Y-axis rather than sharing one. CPU sensors span wildly different
+// scales (temp in the 40s-90s C, load as a 0-100 pct, fan speed in the thousands of RPM) -- on a
+// shared axis, fan RPM's magnitude flattens temp and load into an invisible line near zero. Only
+// the first two axes are actually drawn (left/right, colored to match their series) to keep the
+// chart from getting cluttered as more sensors are added later (GPU/RAM/SSD); axes beyond that
+// stay hidden but still scale their series independently, and the real value is still available
+// via the tooltip on hover regardless of axis visibility.
+function scaleIdForSensor(sensorName) {
+  return `y-${sensorName}`;
+}
+
+function buildScaleConfig(sensorName, index, color) {
+  return {
+    type: 'linear',
+    position: index === 0 ? 'left' : 'right',
+    display: index < 2,
+    grid: { display: index === 0, drawOnChartArea: index === 0 },
+    ticks: { color, font: { size: 9 } },
+    title: { display: true, text: sensorName, color, font: { size: 9 } },
+  };
+}
+
+function addSensorScale(chart, sensorName, index) {
+  const color = SERIES_COLORS[index % SERIES_COLORS.length];
+  chart.options.scales[scaleIdForSensor(sensorName)] = buildScaleConfig(sensorName, index, color);
+  return color;
+}
+
 function buildChart(canvas, seriesMap) {
-  const datasets = [...seriesMap.entries()].map(([name, points], i) => ({
-    label: name,
-    data: points,
-    borderColor: SERIES_COLORS[i % SERIES_COLORS.length],
-    backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    pointRadius: 0,
-    tension: 0.15,
-  }));
+  const names = [...seriesMap.keys()];
+  const scales = {
+    x: { type: 'linear', title: { display: true, text: 'Elapsed time (s)' } },
+  };
+  const datasets = names.map((name, i) => {
+    const color = SERIES_COLORS[i % SERIES_COLORS.length];
+    scales[scaleIdForSensor(name)] = buildScaleConfig(name, i, color);
+    return {
+      label: name,
+      data: seriesMap.get(name),
+      yAxisID: scaleIdForSensor(name),
+      borderColor: color,
+      backgroundColor: 'transparent',
+      borderWidth: 1.5,
+      pointRadius: 0,
+      tension: 0.15,
+    };
+  });
 
   return new Chart(canvas.getContext('2d'), {
     type: 'line',
@@ -113,15 +150,7 @@ function buildChart(canvas, seriesMap) {
       parsing: false,
       interaction: { mode: 'nearest', intersect: false },
       plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } },
-      scales: {
-        x: {
-          type: 'linear',
-          title: { display: true, text: 'Elapsed time (s)' },
-        },
-        y: {
-          title: { display: true, text: 'Value' },
-        },
-      },
+      scales,
     },
   });
 }
@@ -204,10 +233,12 @@ function handleLiveMessage(msg) {
     if (!state.seriesMap.has(msg.sensor_name)) {
       const idx = state.seriesMap.size;
       state.seriesMap.set(msg.sensor_name, []);
+      const color = addSensorScale(state.chart, msg.sensor_name, idx);
       state.chart.data.datasets.push({
         label: msg.sensor_name,
         data: state.seriesMap.get(msg.sensor_name),
-        borderColor: SERIES_COLORS[idx % SERIES_COLORS.length],
+        yAxisID: scaleIdForSensor(msg.sensor_name),
+        borderColor: color,
         backgroundColor: 'transparent',
         borderWidth: 1.5,
         pointRadius: 0,
