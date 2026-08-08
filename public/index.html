@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Luxtronic PCTools -- Sessions</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>Luxtronic PCTools</h1>
+    <span class="muted">Test session dashboard</span>
+  </header>
+  <main>
+    <div class="panel">
+      <h2>Search sessions</h2>
+      <form class="filters" id="filter-form">
+        <label>PC serial
+          <input type="text" name="mobo_serial" placeholder="mobo serial contains..." />
+        </label>
+        <label>Customer
+          <input type="text" name="customer_name" placeholder="customer name contains..." />
+        </label>
+        <label>From
+          <input type="date" name="from" />
+        </label>
+        <label>To
+          <input type="date" name="to" />
+        </label>
+        <button type="submit">Search</button>
+        <button type="button" class="secondary" id="clear-filters">Clear</button>
+      </form>
+    </div>
+
+    <div class="panel">
+      <h2>Sessions</h2>
+      <div id="error" class="error-banner" style="display:none"></div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Started</th>
+              <th>PC serial</th>
+              <th>Customer</th>
+              <th>Type</th>
+              <th>Technician</th>
+              <th>Tests</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="sessions-body">
+            <tr><td colspan="7" class="empty-state">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+  <script src="/js/app.js"></script>
+</body>
+</html>

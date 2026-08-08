@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Luxtronic PCTools -- Session Detail</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>Luxtronic PCTools</h1>
+    <a href="/index.html">&larr; All sessions</a>
+  </header>
+  <main>
+    <div id="error" class="error-banner" style="display:none"></div>
+
+    <div class="panel session-meta" id="session-meta">
+      <h2>Session</h2>
+      <p class="empty-state">Loading...</p>
+    </div>
+
+    <div class="actions-row">
+      <a id="pdf-link" class="button" href="#" target="_blank" rel="noopener">
+        <button type="button">Download PDF report</button>
+      </a>
+      <button type="button" class="secondary" id="refresh-btn">Refresh</button>
+    </div>
+
+    <div id="test-runs"></div>
+  </main>
+
+  <script src="/vendor/chart.umd.min.js"></script>
+  <script src="/js/session.js"></script>
+</body>
+</html>

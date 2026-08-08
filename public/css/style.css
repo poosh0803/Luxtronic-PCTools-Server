@@ -1,0 +1,281 @@
+/* Deliberately plain/functional -- internal tool for 2 technicians, not a polished product.
+   Must be usable from a phone browser (PROJECT_PLAN.md), so this is mobile-first responsive:
+   single column by default, wider layouts only kick in above 700px. */
+
+:root {
+  --bg: #f5f6f8;
+  --panel-bg: #ffffff;
+  --text: #1b1e23;
+  --muted: #62697a;
+  --border: #dde1e7;
+  --accent: #2563eb;
+  --pass: #1a7f37;
+  --fail: #c0392b;
+  --flagged: #b7791f;
+  --aborted: #6b7280;
+  --live: #c0392b;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+header.topbar {
+  background: var(--panel-bg);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+header.topbar h1 {
+  font-size: 18px;
+  margin: 0;
+}
+
+header.topbar a {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 14px;
+}
+
+main {
+  padding: 12px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.panel {
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 14px;
+}
+
+h2 {
+  font-size: 16px;
+  margin: 0 0 10px;
+}
+
+form.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+form.filters label {
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  color: var(--muted);
+  gap: 3px;
+}
+
+input, select, button {
+  font-size: 14px;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text);
+}
+
+button {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  padding: 8px 14px;
+}
+
+button:hover {
+  opacity: 0.9;
+}
+
+button.secondary {
+  background: #fff;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+th, td {
+  text-align: left;
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+th {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+tr.session-row {
+  cursor: pointer;
+}
+
+tr.session-row:hover {
+  background: #f0f4ff;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.badge.pass { background: var(--pass); }
+.badge.fail { background: var(--fail); }
+.badge.flagged { background: var(--flagged); }
+.badge.aborted { background: var(--aborted); }
+.badge.running {
+  background: var(--live);
+  animation: pulse 1.6s infinite;
+}
+.badge.unknown { background: var(--muted); }
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.55; }
+  100% { opacity: 1; }
+}
+
+.muted { color: var(--muted); }
+
+.session-meta dl {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  gap: 6px 10px;
+  margin: 0;
+  font-size: 14px;
+}
+
+.session-meta dt {
+  color: var(--muted);
+}
+
+.session-meta dd {
+  margin: 0;
+}
+
+.test-run {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.test-run-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.test-run-header h3 {
+  margin: 0;
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.chart-wrap {
+  position: relative;
+  height: 260px;
+  width: 100%;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 13px;
+}
+
+.stat-tile {
+  background: #f8f9fb;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+
+.stat-tile .label {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.stat-tile .value {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.actions-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.empty-state {
+  color: var(--muted);
+  text-align: center;
+  padding: 24px 8px;
+}
+
+.error-banner {
+  background: #fdecea;
+  color: var(--fail);
+  border: 1px solid #f5c2bc;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+@media (min-width: 700px) {
+  form.filters {
+    align-items: flex-end;
+  }
+}
+
+@media (max-width: 480px) {
+  .session-meta dl {
+    grid-template-columns: 100px 1fr;
+    font-size: 13px;
+  }
+}
