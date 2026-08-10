@@ -387,6 +387,19 @@ tr.session-row:hover {
   color: var(--fail);
 }
 
+/* Technicians table (public/technicians.html) -- Deactivate/Reactivate + Delete side by side,
+   small so a two-button cell doesn't blow out row height on mobile. */
+.row-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.row-actions button {
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
 .test-run-header h3 {
   margin: 0;
   font-size: 14px;
@@ -459,6 +472,24 @@ tr.session-row:hover {
   margin-bottom: 14px;
   font-size: 14px;
   font-weight: 500;
+}
+
+/* One-time API key reveal (public/technicians.html) -- readonly input rather than plain text so
+   triple-click-then-Ctrl+C works even where the Clipboard API doesn't: this dashboard runs over
+   plain HTTP on the LAN, and navigator.clipboard is restricted to secure contexts in most
+   browsers, so the Copy button falls back to document.execCommand('copy') rather than relying on
+   it (see technicians.js). */
+.key-reveal {
+  display: flex;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.key-reveal input {
+  flex: 1;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  background: var(--stat-bg);
 }
 
 @media (min-width: 700px) {

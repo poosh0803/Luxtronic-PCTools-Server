@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Luxtronic PCTools -- Technicians</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%F0%9F%96%A5%EF%B8%8F</text></svg>" />
+  <link rel="stylesheet" href="/css/style.css" />
+  <script>
+    // Applies the remembered theme (default: light) before first paint -- see index.html/
+    // session.html for why this is opt-in only, never inferred from prefers-color-scheme.
+    document.documentElement.setAttribute(
+      'data-theme',
+      localStorage.getItem('luxtronic-theme') === 'dark' ? 'dark' : 'light'
+    );
+  </script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">L</span>
+      <h1>Luxtronic PCTools</h1>
+    </div>
+    <div class="topbar-right">
+      <a href="/index.html">&larr; All sessions</a>
+      <button type="button" class="theme-toggle" id="theme-toggle">🌙 Dark</button>
+    </div>
+  </header>
+  <main>
+    <div id="error" class="error-banner" style="display:none"></div>
+
+    <div class="panel">
+      <h2>New technician</h2>
+      <form class="filters" id="create-form">
+        <label>Name
+          <input type="text" name="name" placeholder="Technician's name" required />
+        </label>
+        <button type="submit">Create</button>
+      </form>
+    </div>
+
+    <div class="panel" id="new-key-panel" style="display:none">
+      <h2>New API key -- save this now</h2>
+      <p class="muted">
+        This is shown once and cannot be recovered afterward -- only its hash is stored. It's
+        also been written to <code id="new-key-path"></code> on the server: copy that file to the
+        technician's PC and rename it to <code>apikey.txt</code> next to the client executable.
+      </p>
+      <div class="key-reveal">
+        <input type="text" id="new-key-value" readonly />
+        <button type="button" class="secondary" id="copy-key-btn">Copy</button>
+      </div>
+      <button type="button" class="secondary" id="dismiss-key-btn">Done</button>
+    </div>
+
+    <div class="panel">
+      <h2>Technicians</h2>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Status</th>
+              <th>Created</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="technicians-body">
+            <tr><td colspan="4" class="empty-state">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+  <script src="/js/technicians.js"></script>
+  <script src="/js/theme.js"></script>
+</body>
+</html>

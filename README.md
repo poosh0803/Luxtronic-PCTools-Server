@@ -118,14 +118,16 @@ ecosystem.config.js` against a real Postgres, confirmed the dashboard and auth b
 npm test
 ```
 
-65 tests (Node's built-in `node --test`, no framework dependency -- see
+71 tests (Node's built-in `node --test`, no framework dependency -- see
 `.claude/skills/unit-testing/SKILL.md` for the conventions this suite follows). Covers every
 pure/deterministic piece: the concurrency rule (CONTRACT.md section 6) and result computation
 (section 7, including the SSD ATA-vs-NVMe threshold split and the stop_reason/aborted and
 pass/fail/flagged boundary conditions), API-key hashing, the config file loader (including its
-BOM-handling and no-stale-caching behavior), request-validation predicates, and the telemetry
-cache's hit path. Deliberately does not cover anything needing a live Postgres/HTTP/WebSocket
-connection -- routes and WS handlers are exercised by the manual checklist below instead.
+BOM-handling and no-stale-caching behavior), request-validation predicates, the telemetry cache's
+hit path, and the technician-provisioning filename sanitization. Deliberately does not cover
+anything needing a live Postgres/HTTP/WebSocket connection -- routes and WS handlers (including
+`createTechnician()` itself, which inserts a row) are exercised by the manual checklist below
+instead.
 
 ## Project layout
 
@@ -144,6 +146,8 @@ src/
                            UTF-8 BOM -- see comments)
   lib/
     auth.js              API key hashing + lookup + requireApiKey() middleware
+    technicians.js         createTechnician() -- shared by scripts/create-technician.js and the
+                              dashboard's POST /api/technicians, so provisioning logic lives once
     concurrency.js        CONTRACT.md section 6 rule, as a pure function
     resultComputation.js  CONTRACT.md section 7 rule, as a pure function
     testRunCache.js        In-memory test_run_id -> {session_id, component} cache
@@ -152,23 +156,26 @@ src/
   routes/
     pcClient.js            PC-client endpoints (auth required)
     dashboard.js            Dashboard endpoints (no auth) -- includes the force-close
-                               .../stop and .../end endpoints (CONTRACT.md section 4)
+                               .../stop and .../end endpoints, and technician management
+                               (CONTRACT.md section 4)
   ws/
     hub.js                  In-memory pub/sub for /ws/live fan-out, keyed by session_id
     telemetry.js             /ws/telemetry connection handler
     live.js                  /ws/live connection handler
 scripts/
-  create-technician.js    CLI to provision a technician + API key (also writes it to api_keys/)
+  create-technician.js    CLI wrapper around src/lib/technicians.js -- for shell access / bulk
+                             import; public/technicians.html covers this day-to-day now
 api_keys/                Generated technician API key files (git-ignored except its own README --
                             see api_keys/README.md)
 public/                  Static dashboard (plain HTML/CSS/JS, no build step)
   index.html               Session list + search
   session.html              Session detail: live/historical chart per test_run, PDF export link,
                                force-stop/end controls
-  js/app.js, js/session.js, js/theme.js  (theme.js: light/dark toggle, opt-in only)
+  technicians.html          List/create/revoke technicians, one-time API key reveal on creation
+  js/app.js, js/session.js, js/technicians.js, js/theme.js  (theme.js: light/dark toggle, opt-in only)
   css/style.css
   vendor/chart.umd.min.js  Vendored Chart.js (no CDN dependency)
-test/                    node:test unit tests (65 tests -- see "Run the unit tests" above)
+test/                    node:test unit tests (71 tests -- see "Run the unit tests" above)
 .claude/skills/unit-testing/  Project-scoped Claude Code skill documenting this suite's conventions
 ```
 
@@ -226,6 +233,15 @@ setup:
     (`max_smart_reallocated_sectors`) and an NVMe-style drive (`max_smart_percentage_used`,
     `min_smart_available_spare_percent`) in separate test-runs -- confirm both evaluate correctly
     against `config/default.json`'s bus-aware thresholds and render on the dashboard.
+17. On `/technicians.html`, create a technician -- confirm the raw key is shown once, the Copy
+    button works (or at minimum the key is pre-selected for manual Ctrl+C), and `api_keys/<name>.txt`
+    was written with exactly that key as its whole content. Deactivate that technician, then try a
+    request with their key (e.g. `GET /api/config`) -- confirm `401`. Reactivate, confirm the same
+    key works again (the key itself never changes across deactivate/reactivate).
+18. On `/technicians.html`, click Delete on a fresh technician with no sessions -- confirm they're
+    gone from the list and the DB row is actually removed (not just deactivated). Then click
+    Delete on a technician who owns at least one session -- confirm it's rejected with a clear
+    "has session(s)" message, not a raw DB error, and that they're still in the list afterward.
 
 ## Scope notes and judgment calls (for reconciling with the client-side implementation)
 
@@ -276,18 +292,15 @@ document:
    one test_run (validated as belonging to the session, `404` if not); if omitted, returns
    telemetry for every test_run in the session, each row tagged with its `test_run_id`.
 
-6. **No technicians-list endpoint.** CONTRACT.md's dashboard `GET /api/sessions` query params
-   include `technician_id`, but there's no endpoint for the dashboard to discover technician
-   IDs/names to populate a filter control. The dashboard UI here doesn't expose a technician
-   picker as a result (the query param is still honored server-side if hand-supplied); each
-   session row is enriched with the technician's *name* (a join, not a schema or endpoint change)
-   so the list is still useful without one. If a technicians-list endpoint is wanted, it isn't in
-   CONTRACT.md's table and would need to be added there first.
+6. ~~No technicians-list endpoint.~~ **Resolved**: `GET /api/technicians` now exists
+   (`public/technicians.html`), so `GET /api/sessions`'s `technician_id` filter and the session
+   list's technician-name column both have a real source to back a picker with, if one gets built.
 
-7. **Technician provisioning has no endpoint at all** (mentioned above, restated here since it's a
-   contract gap rather than an implementation choice) -- handled via `scripts/create-technician.js`
-   instead. If technicians should ever be creatable from the client or dashboard, that needs a new
-   endpoint added to CONTRACT.md.
+7. ~~Technician provisioning has no endpoint at all.~~ **Resolved**: `POST /api/technicians` and
+   `PATCH /api/technicians/:id` (revoke/reactivate) now exist alongside the list endpoint above,
+   sharing their actual provisioning logic with `scripts/create-technician.js` via
+   `src/lib/technicians.js` so the CLI and the dashboard page can't drift apart. The CLI script
+   still exists for anyone who prefers shell access (e.g. scripting a bulk import).
 
 8. **Extra (non-schema) DB indexes.** `migrations/001_init.sql` adds a few `CREATE INDEX`
    statements beyond CONTRACT.md section 2's literal DDL block (on `sessions.mobo_serial`,

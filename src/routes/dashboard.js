@@ -4,20 +4,142 @@
 
 const express = require('express');
 const pool = require('../../db/pool');
-const { isValidUuid } = require('../lib/validation');
+const { isValidUuid, isNonEmptyString } = require('../lib/validation');
 const { generateSessionReportPdf } = require('../lib/pdf');
 const testRunCache = require('../lib/testRunCache');
 const hub = require('../ws/hub');
+const { createTechnician } = require('../lib/technicians');
 
 const router = express.Router();
 
+// GET /api/technicians
+//
+// NOT in CONTRACT.md's original table -- fills the gap the comment below used to describe (no
+// endpoint existed for the dashboard to discover technician names/IDs at all). Never returns
+// api_key_hash -- there's no way to recover a raw key once issued, by design (CONTRACT.md
+// section 1), and this endpoint doesn't change that.
+router.get('/api/technicians', async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      'SELECT id, name, active, created_at FROM technicians ORDER BY name'
+    );
+    res.json(rows);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/technicians
+//
+// NOT in CONTRACT.md's original table -- dashboard equivalent of scripts/create-technician.js
+// (public/technicians.html), so provisioning a new technician doesn't require shell access to the
+// server box. Returns the raw API key ONCE, same as the CLI -- only its hash is stored, so this
+// response (or the api_keys/<name>.txt file src/lib/technicians.js also writes) is the only place
+// it survives after this request completes.
+router.post('/api/technicians', async (req, res, next) => {
+  const { name } = req.body || {};
+  if (!isNonEmptyString(name)) {
+    return res.status(400).json({ error: 'invalid_request', message: 'name is required' });
+  }
+  try {
+    const result = await createTechnician(name);
+    res.status(201).json({
+      id: result.id,
+      name: result.name,
+      api_key: result.rawKey,
+      key_file_path: result.filePath,
+      overwrote_existing_file: result.overwrote,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PATCH /api/technicians/:id
+//
+// NOT in CONTRACT.md's original table -- toggles `active` (revoke/reactivate an API key without
+// deleting the technician or their session history). auth.js's findTechnicianByApiKey() already
+// rejects inactive technicians, so a deactivation takes effect on that technician's very next
+// request -- no other code needed to actually enforce it.
+router.patch('/api/technicians/:id', async (req, res, next) => {
+  const techId = req.params.id;
+  const { active } = req.body || {};
+  if (!isValidUuid(techId)) {
+    return res.status(400).json({ error: 'invalid_request', message: 'invalid technician id' });
+  }
+  if (typeof active !== 'boolean') {
+    return res.status(400).json({ error: 'invalid_request', message: 'active must be a boolean' });
+  }
+  try {
+    const { rows } = await pool.query(
+      'UPDATE technicians SET active = $1 WHERE id = $2 RETURNING id, name, active, created_at',
+      [active, techId]
+    );
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'not_found', message: 'technician not found' });
+    }
+    res.json(rows[0]);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/technicians/:id
+//
+// NOT in CONTRACT.md's original table. Distinct from PATCH .../active=false: that's a reversible
+// revoke that keeps the technician's name attached to their past sessions; this is a permanent
+// removal, only really useful for cleaning up an accidental duplicate/typo'd entry created
+// seconds ago. sessions.technician_id has no ON DELETE CASCADE (migrations/001_init.sql) --
+// Postgres itself refuses to delete a technician referenced by any session, which is exactly the
+// safety net wanted here (never silently orphan/cascade-delete real session history). This route
+// checks for that up front so the error is a clear message instead of a raw DB constraint error,
+// with the FK violation itself (code 23503) still caught as a defensive fallback in case a
+// session gets created in the gap between the check and the DELETE.
+router.delete('/api/technicians/:id', async (req, res, next) => {
+  const techId = req.params.id;
+  if (!isValidUuid(techId)) {
+    return res.status(400).json({ error: 'invalid_request', message: 'invalid technician id' });
+  }
+  try {
+    const countRes = await pool.query('SELECT COUNT(*) FROM sessions WHERE technician_id = $1', [
+      techId,
+    ]);
+    const sessionCount = Number(countRes.rows[0].count);
+    if (sessionCount > 0) {
+      return res.status(409).json({
+        error: 'has_sessions',
+        message: `Cannot delete: ${sessionCount} session(s) are attributed to this technician. ` +
+          'Deactivate instead to preserve that history while blocking their API key.',
+        session_count: sessionCount,
+      });
+    }
+
+    const { rows } = await pool.query('DELETE FROM technicians WHERE id = $1 RETURNING id', [
+      techId,
+    ]);
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'not_found', message: 'technician not found' });
+    }
+    res.status(204).end();
+  } catch (err) {
+    if (err.code === '23503') {
+      return res.status(409).json({
+        error: 'has_sessions',
+        message: 'Cannot delete: this technician now has session history (created after this ' +
+          'request started). Deactivate instead to preserve it.',
+      });
+    }
+    next(err);
+  }
+});
+
 // GET /api/sessions?mobo_serial=&customer_name=&from=&to=&technician_id=
 //
-// JUDGMENT CALL: CONTRACT.md doesn't define a technicians-list endpoint, so the dashboard has no
-// way to populate a technician_id picker on its own. This still honors technician_id as a raw
-// query param (e.g. hand-typed or deep-linked), and enriches each row with the technician's name
-// (joined, not a schema change) plus a rollup of that session's test_runs so the list view is
-// useful without an extra round-trip per row. See final report for the full flag.
+// JUDGMENT CALL: CONTRACT.md doesn't define a technicians-list endpoint in its original table,
+// but GET /api/technicians above now fills that gap -- this still honors technician_id as a raw
+// query param (e.g. hand-typed, deep-linked, or picked from that new endpoint's response), and
+// enriches each row with the technician's name (joined, not a schema change) plus a rollup of
+// that session's test_runs so the list view is useful without an extra round-trip per row.
 router.get('/api/sessions', async (req, res, next) => {
   const { mobo_serial, customer_name, from, to, technician_id } = req.query;
 
