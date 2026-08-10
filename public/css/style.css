@@ -1,19 +1,70 @@
-/* Deliberately plain/functional -- internal tool for 2 technicians, not a polished product.
-   Must be usable from a phone browser (PROJECT_PLAN.md), so this is mobile-first responsive:
-   single column by default, wider layouts only kick in above 700px. */
+/* Internal tool for 2 technicians -- still mobile-first responsive (PROJECT_PLAN.md requires
+   phone-browser usability): single column by default, wider layouts only above 700px. "Nicer"
+   here means clearer hierarchy and less visual noise, not more decoration -- the badges, stat
+   tiles and chart area are the things a technician actually scans under time pressure, so those
+   get the most attention. Respects prefers-color-scheme automatically; no in-app toggle since
+   nothing asked for one. */
 
 :root {
-  --bg: #f5f6f8;
+  --bg: #eef1f6;
   --panel-bg: #ffffff;
-  --text: #1b1e23;
-  --muted: #62697a;
-  --border: #dde1e7;
-  --accent: #2563eb;
-  --pass: #1a7f37;
+  --panel-border: #e3e7ee;
+  --panel-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
+  --text: #131722;
+  --muted: #667085;
+  --border: #e3e7ee;
+  --accent: #2554e0;
+  --accent-hover: #1c42b8;
+  --accent-soft-bg: #eaf0ff;
+  --input-bg: #ffffff;
+  --row-hover: #f3f6fd;
+  --stat-bg: #f7f8fb;
+  --code-bg: #f2f3f6;
+
+  --pass: #15803d;
+  --pass-bg: #e7f6ec;
   --fail: #c0392b;
-  --flagged: #b7791f;
-  --aborted: #6b7280;
-  --live: #c0392b;
+  --fail-bg: #fdecea;
+  --flagged: #a5670f;
+  --flagged-bg: #fdf3df;
+  --aborted: #55606f;
+  --aborted-bg: #eef0f3;
+  --live: #d6382b;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+}
+
+/* Applied only via the theme-toggle button (public/js/theme.js), never automatically from the
+   OS/browser preference -- defaulting to whatever the system happens to be set to surprised
+   someone the first time this shipped, so dark mode is now opt-in and remembered per-browser
+   via localStorage rather than inherited silently. */
+:root[data-theme="dark"] {
+    --bg: #0d1117;
+    --panel-bg: #151b26;
+    --panel-border: #262f3f;
+    --panel-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 10px rgba(0, 0, 0, 0.25);
+    --text: #e7eaf1;
+    --muted: #93a0b8;
+    --border: #262f3f;
+    --accent: #5b8cff;
+    --accent-hover: #7ba1ff;
+    --accent-soft-bg: rgba(91, 140, 255, 0.14);
+    --input-bg: #10151f;
+    --row-hover: #1a2130;
+    --stat-bg: #10151f;
+    --code-bg: #10151f;
+
+    --pass: #4ade80;
+    --pass-bg: rgba(74, 222, 128, 0.12);
+    --fail: #f27060;
+    --fail-bg: rgba(242, 112, 96, 0.14);
+    --flagged: #e7b34e;
+    --flagged-bg: rgba(231, 179, 78, 0.14);
+    --aborted: #a3adc0;
+    --aborted-bg: rgba(163, 173, 192, 0.12);
+    --live: #ff5c4d;
 }
 
 * {
@@ -26,54 +77,120 @@ body {
   background: var(--bg);
   color: var(--text);
   font-size: 15px;
-  line-height: 1.4;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
 }
 
 header.topbar {
   background: var(--panel-bg);
-  border-bottom: 1px solid var(--border);
-  padding: 12px 16px;
+  border-bottom: 1px solid var(--panel-border);
+  padding: 12px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 8px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-mark {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--accent), #7fa2ff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  flex: none;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.15);
 }
 
 header.topbar h1 {
-  font-size: 18px;
+  font-size: 17px;
   margin: 0;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+header.topbar .muted {
+  font-size: 13px;
 }
 
 header.topbar a {
   color: var(--accent);
   text-decoration: none;
   font-size: 14px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+header.topbar a:hover {
+  color: var(--accent-hover);
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.theme-toggle {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.theme-toggle:hover {
+  background: var(--row-hover);
+  color: var(--text);
 }
 
 main {
-  padding: 12px;
+  padding: 16px;
   max-width: 1100px;
   margin: 0 auto;
 }
 
 .panel {
   background: var(--panel-bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 14px;
-  margin-bottom: 14px;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--panel-shadow);
+  padding: 16px 18px;
+  margin-bottom: 16px;
 }
 
 h2 {
-  font-size: 16px;
-  margin: 0 0 10px;
+  font-size: 15px;
+  margin: 0 0 12px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+h2 + form.filters,
+h2 + div {
+  margin-top: 2px;
 }
 
 form.filters {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
   align-items: flex-end;
 }
 
@@ -82,34 +199,59 @@ form.filters label {
   flex-direction: column;
   font-size: 12px;
   color: var(--muted);
-  gap: 3px;
+  gap: 4px;
+  font-weight: 500;
 }
 
 input, select, button {
   font-size: 14px;
-  padding: 7px 9px;
+  padding: 8px 10px;
   border: 1px solid var(--border);
-  border-radius: 6px;
-  background: #fff;
+  border-radius: var(--radius-sm);
+  background: var(--input-bg);
   color: var(--text);
+  font-family: inherit;
+  transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease, opacity 120ms ease, transform 80ms ease;
+}
+
+input:focus, select:focus, button:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft-bg);
 }
 
 button {
   background: var(--accent);
   color: #fff;
-  border: none;
+  border: 1px solid var(--accent);
   cursor: pointer;
-  padding: 8px 14px;
+  padding: 9px 16px;
+  font-weight: 600;
 }
 
 button:hover {
-  opacity: 0.9;
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+button:active {
+  transform: translateY(1px);
 }
 
 button.secondary {
-  background: #fff;
+  background: transparent;
   color: var(--accent);
-  border: 1px solid var(--accent);
+  border: 1px solid var(--border);
+}
+
+button.secondary:hover {
+  background: var(--accent-soft-bg);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+a.button {
+  text-decoration: none;
 }
 
 table {
@@ -120,7 +262,7 @@ table {
 
 th, td {
   text-align: left;
-  padding: 8px 6px;
+  padding: 10px 8px;
   border-bottom: 1px solid var(--border);
   vertical-align: top;
 }
@@ -128,47 +270,69 @@ th, td {
 th {
   color: var(--muted);
   font-weight: 600;
-  font-size: 12px;
+  font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
 }
 
 tr.session-row {
   cursor: pointer;
+  transition: background-color 100ms ease;
 }
 
 tr.session-row:hover {
-  background: #f0f4ff;
+  background: var(--row-hover);
 }
 
 .table-scroll {
   overflow-x: auto;
+  margin: 0 -18px;
+  padding: 0 18px;
 }
 
 .badge {
-  display: inline-block;
-  padding: 2px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
   border-radius: 999px;
   font-size: 12px;
-  font-weight: 600;
-  color: #fff;
+  font-weight: 700;
   white-space: nowrap;
+  line-height: 1.6;
 }
 
-.badge.pass { background: var(--pass); }
-.badge.fail { background: var(--fail); }
-.badge.flagged { background: var(--flagged); }
-.badge.aborted { background: var(--aborted); }
+.badge::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: currentColor;
+  flex: none;
+}
+
+.badge.pass { background: var(--pass-bg); color: var(--pass); }
+.badge.fail { background: var(--fail-bg); color: var(--fail); }
+.badge.flagged { background: var(--flagged-bg); color: var(--flagged); }
+.badge.aborted { background: var(--aborted-bg); color: var(--aborted); }
+.badge.unknown { background: var(--aborted-bg); color: var(--muted); }
+
 .badge.running {
   background: var(--live);
-  animation: pulse 1.6s infinite;
+  color: #fff;
 }
-.badge.unknown { background: var(--muted); }
+.badge.running::before {
+  animation: pulse 1.4s infinite;
+}
 
 @keyframes pulse {
-  0% { opacity: 1; }
-  50% { opacity: 0.55; }
-  100% { opacity: 1; }
+  0% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.75); }
+  100% { opacity: 1; transform: scale(1); }
 }
 
 .muted { color: var(--muted); }
@@ -176,13 +340,14 @@ tr.session-row:hover {
 .session-meta dl {
   display: grid;
   grid-template-columns: 130px 1fr;
-  gap: 6px 10px;
+  gap: 8px 12px;
   margin: 0;
   font-size: 14px;
 }
 
 .session-meta dt {
   color: var(--muted);
+  font-weight: 500;
 }
 
 .session-meta dd {
@@ -191,9 +356,10 @@ tr.session-row:hover {
 
 .test-run {
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 12px;
+  border-radius: var(--radius-md);
+  padding: 14px;
   margin-bottom: 12px;
+  background: var(--panel-bg);
 }
 
 .test-run-header {
@@ -202,20 +368,42 @@ tr.session-row:hover {
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
+}
+
+/* Sits in .actions-row alongside "Download PDF report"/"Refresh" (session-level, not per-part --
+   see session.js's stopSession()), so it matches their size; only the color marks it as the
+   destructive one of the three. */
+.stop-btn {
+  background: transparent;
+  color: var(--fail);
+  border: 1px solid var(--fail);
+  font-weight: 700;
+}
+
+.stop-btn:hover {
+  background: var(--fail-bg);
+  border-color: var(--fail);
+  color: var(--fail);
 }
 
 .test-run-header h3 {
   margin: 0;
-  font-size: 15px;
+  font-size: 14px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
+  color: var(--muted);
 }
 
 .chart-wrap {
   position: relative;
   height: 260px;
   width: 100%;
+  background: var(--stat-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px;
 }
 
 .stats-grid {
@@ -227,44 +415,50 @@ tr.session-row:hover {
 }
 
 .stat-tile {
-  background: #f8f9fb;
+  background: var(--stat-bg);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
 }
 
 .stat-tile .label {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 10px;
+  font-weight: 600;
   text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .stat-tile .value {
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  margin-top: 2px;
 }
 
 .actions-row {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .empty-state {
   color: var(--muted);
   text-align: center;
-  padding: 24px 8px;
+  padding: 32px 8px;
+  font-size: 14px;
 }
 
 .error-banner {
-  background: #fdecea;
+  background: var(--fail-bg);
   color: var(--fail);
-  border: 1px solid #f5c2bc;
-  border-radius: 6px;
-  padding: 8px 12px;
-  margin-bottom: 12px;
+  border: 1px solid var(--fail);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin-bottom: 14px;
   font-size: 14px;
+  font-weight: 500;
 }
 
 @media (min-width: 700px) {
@@ -274,6 +468,12 @@ tr.session-row:hover {
 }
 
 @media (max-width: 480px) {
+  main {
+    padding: 12px;
+  }
+  .panel {
+    padding: 14px;
+  }
   .session-meta dl {
     grid-template-columns: 100px 1fr;
     font-size: 13px;
