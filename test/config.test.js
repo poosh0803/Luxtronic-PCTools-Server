@@ -102,6 +102,22 @@ test('loadConfig throws a clear error if the file does not exist', () => {
   });
 });
 
+test('loadConfig strips a leading UTF-8 BOM before parsing (Notepad-saved files commonly have one)', () => {
+  withTempDir((dir) => {
+    const filePath = path.join(dir, 'bom.json');
+    // Built via fromCharCode rather than a literal character in this source file -- an actual
+    // pasted BOM glyph is invisible and has already been silently dropped once while this test
+    // was being written, which is exactly the kind of thing that quietly stops testing what it
+    // claims to the next time this file is saved by some other tool.
+    const bom = String.fromCharCode(0xfeff);
+    fs.writeFileSync(filePath, bom + JSON.stringify(VALID_CONFIG));
+    withConfigPath(filePath, () => {
+      const loaded = loadConfig();
+      assert.deepEqual(loaded, VALID_CONFIG);
+    });
+  });
+});
+
 test('loadConfig re-reads from disk every call: no stale caching between calls', () => {
   withTempDir((dir) => {
     const filePath = path.join(dir, 'mutable.json');

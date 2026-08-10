@@ -28,6 +28,15 @@ function loadConfig() {
     throw new Error(`Failed to read config file at ${filePath}: ${err.message}`);
   }
 
+  // Strip a leading UTF-8 BOM if present. This file is meant to be hand-edited on the LAN box
+  // (no admin UI for v1 -- see PROJECT_PLAN.md section 5), and Windows editors commonly save
+  // "UTF-8" as UTF-8-with-BOM (Notepad does this by default) -- JSON.parse treats the BOM as an
+  // invalid leading character and fails the whole file over an invisible byte, which is a
+  // confusing failure mode for whoever just edited a threshold and saved.
+  if (raw.charCodeAt(0) === 0xfeff) {
+    raw = raw.slice(1);
+  }
+
   let parsed;
   try {
     parsed = JSON.parse(raw);
