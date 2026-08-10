@@ -19,7 +19,10 @@ literally; deviations are called out below).
 - `ws` for WebSocket (`/ws/telemetry` ingest, `/ws/live` dashboard fan-out)
 - `pdfkit` for PDF report generation (pure JS, no headless-browser dependency)
 - Plain HTML/CSS/vanilla JS dashboard (Chart.js vendored locally in `public/vendor/`, no CDN/build
-  step) -- intentionally minimal, this is an internal tool for 2 technicians.
+  step) -- intentionally minimal, this is an internal tool for 2 technicians. Has a light/dark
+  theme toggle (opt-in via the button, never inferred from OS preference -- see `public/js/theme.js`)
+  and dashboard-side controls to force-close a stuck test-run/session when its owning PC client has
+  crashed or gone unreachable (`POST .../stop`, `POST .../end` -- CONTRACT.md section 4).
 
 No ORM, no ..js framework beyond Express, no ..js frameworks for the frontend, per the task's "don't
 add a heavy ORM/framework beyond what's needed" instruction.
@@ -98,9 +101,16 @@ npm run dev
 
 Server listens on `PORT` (default `7777`). Dashboard: `http://localhost:7777/index.html`.
 
-Production deploy (LAN box, `192.168.68.255:7777`, out of scope for this pass) follows the same
-pm2 pattern as the other Luxtronic services (`lan-portal-deploy`: git pull + pm2 restart) --
-nothing here assumes or configures that box.
+**Production (pm2):** `ecosystem.config.js` defines the process for the LAN box
+(`192.168.68.255:7777`), deployed the same way as the other Luxtronic services
+(`lan-portal-deploy`: git pull + pm2 restart) -- `pm2 start ecosystem.config.js`. It's fork mode
+with exactly 1 instance, deliberately not cluster: `testRunCache.js` and the `/ws/live` pub/sub hub
+are in-memory, per-process state, so more than one instance would let a dashboard tab subscribe to
+an instance that never sees the telemetry another instance is receiving. Secrets (`DATABASE_URL`)
+stay in `.env` on the box, not in the pm2 config file. Verified locally (`pm2 start
+ecosystem.config.js` against a real Postgres, confirmed the dashboard and auth both work,
+`logs/out.log` picks up the startup line) but nothing here has touched the actual
+`192.168.68.255` box.
 
 ### 7. Run the unit tests
 
@@ -108,13 +118,19 @@ nothing here assumes or configures that box.
 npm test
 ```
 
-Covers the two pieces of pure business logic that don't need a DB: the concurrency rule
-(CONTRACT.md section 6) and result computation (section 7), including the stop_reason/aborted path
-and the pass/fail/flagged boundary conditions.
+65 tests (Node's built-in `node --test`, no framework dependency -- see
+`.claude/skills/unit-testing/SKILL.md` for the conventions this suite follows). Covers every
+pure/deterministic piece: the concurrency rule (CONTRACT.md section 6) and result computation
+(section 7, including the SSD ATA-vs-NVMe threshold split and the stop_reason/aborted and
+pass/fail/flagged boundary conditions), API-key hashing, the config file loader (including its
+BOM-handling and no-stale-caching behavior), request-validation predicates, and the telemetry
+cache's hit path. Deliberately does not cover anything needing a live Postgres/HTTP/WebSocket
+connection -- routes and WS handlers are exercised by the manual checklist below instead.
 
 ## Project layout
 
 ```
+ecosystem.config.js   pm2 process definition (production/LAN deploy, see "Start the server" above)
 migrations/           Plain SQL migrations (001_init.sql = CONTRACT.md section 2 schema)
 db/
   pool.js              pg Pool, reads DATABASE_URL
@@ -124,7 +140,8 @@ config/
 src/
   app.js               Express app wiring (routes, static files, error handling)
   server.js             Entrypoint: HTTP server + WebSocket upgrade routing, starts here
-  config.js             Config file loader (re-reads from disk each call, see comments)
+  config.js             Config file loader (re-reads from disk each call, strips a leading
+                           UTF-8 BOM -- see comments)
   lib/
     auth.js              API key hashing + lookup + requireApiKey() middleware
     concurrency.js        CONTRACT.md section 6 rule, as a pure function
@@ -134,20 +151,25 @@ src/
     pdf.js                 PDF report generation (pdfkit)
   routes/
     pcClient.js            PC-client endpoints (auth required)
-    dashboard.js            Dashboard endpoints (no auth)
+    dashboard.js            Dashboard endpoints (no auth) -- includes the force-close
+                               .../stop and .../end endpoints (CONTRACT.md section 4)
   ws/
     hub.js                  In-memory pub/sub for /ws/live fan-out, keyed by session_id
     telemetry.js             /ws/telemetry connection handler
     live.js                  /ws/live connection handler
 scripts/
-  create-technician.js    CLI to provision a technician + API key
+  create-technician.js    CLI to provision a technician + API key (also writes it to api_keys/)
+api_keys/                Generated technician API key files (git-ignored except its own README --
+                            see api_keys/README.md)
 public/                  Static dashboard (plain HTML/CSS/JS, no build step)
   index.html               Session list + search
-  session.html              Session detail: live/historical chart per test_run, PDF export link
-  js/app.js, js/session.js
+  session.html              Session detail: live/historical chart per test_run, PDF export link,
+                               force-stop/end controls
+  js/app.js, js/session.js, js/theme.js  (theme.js: light/dark toggle, opt-in only)
   css/style.css
   vendor/chart.umd.min.js  Vendored Chart.js (no CDN dependency)
-test/                    node:test unit tests for concurrency.js and resultComputation.js
+test/                    node:test unit tests (65 tests -- see "Run the unit tests" above)
+.claude/skills/unit-testing/  Project-scoped Claude Code skill documenting this suite's conventions
 ```
 
 ## Manual verification checklist
@@ -190,6 +212,20 @@ setup:
     sample for the same `test_run_id` -- confirm it's still accepted (the in-memory
     `testRunCache` falls back to a DB lookup for unknown `test_run_id`s) and still shows up live
     on a dashboard tab that re-subscribes.
+13. Load the dashboard with the OS/browser set to dark mode -- confirm it still loads **light**
+    (dark mode here is opt-in only, never inferred). Click the theme toggle, confirm it switches
+    and reloading the page remembers the choice (`localStorage`).
+14. Start a test-run, then walk away without ever calling its completion or session-end endpoint
+    (simulating a crashed client) -- confirm the session detail page shows a "Stop running
+    test(s)" button, and that clicking it marks the test_run `aborted`
+    (`stop_reason: manual_stop`) and closes the session, with no duplicate panels.
+15. Manually create a session + test-run via curl, complete the test-run normally, but never call
+    end-session -- confirm the session detail page shows an "End session" button (not "Stop
+    running test(s)", since nothing is running) and that clicking it closes the session.
+16. `PATCH` a test-run's `summary_stats` with SSD SMART fields for both an ATA-style drive
+    (`max_smart_reallocated_sectors`) and an NVMe-style drive (`max_smart_percentage_used`,
+    `min_smart_available_spare_percent`) in separate test-runs -- confirm both evaluate correctly
+    against `config/default.json`'s bus-aware thresholds and render on the dashboard.
 
 ## Scope notes and judgment calls (for reconciling with the client-side implementation)
 
@@ -270,8 +306,12 @@ document:
 
 ## Explicitly not done in this pass (by design, per task scope)
 
-- No GPU/RAM/SSD-specific parsing, threshold tuning, or wrapper logic -- those config sections are
-  the contract's placeholder example values, untouched.
+- No GPU/RAM-specific parsing, threshold tuning, or wrapper logic -- those config sections are
+  still the contract's placeholder example values, untouched.
+- SSD thresholds are real now (bus-aware ATA/NVMe SMART fields, see "Scope notes" item 2), but
+  that's config/result-computation only -- the client's SSD test-run orchestration (UI, session
+  `ssd_serials` wiring, actually running CrystalDiskMark) isn't built yet, so nothing exercises
+  these thresholds end-to-end outside of manual `curl`/test calls.
 - No dashboard login/auth (explicitly no-login per PROJECT_PLAN.md).
 - No admin UI for editing `config/default.json` (hand-edit the file, per plan).
 - No connection to or configuration of the real `192.168.68.255` production box -- everything here
