@@ -126,6 +126,10 @@ A JSON file on the server (v1 — no admin UI, per plan). Client fetches the rel
 | GET | `/api/sessions/:id` | Session detail incl. all test_runs |
 | GET | `/api/sessions/:id/telemetry?test_run_id=` | Historical telemetry for charts on a completed session |
 | GET | `/api/sessions/:id/report.pdf` | Generate/download PDF report |
+| POST | `/api/sessions/:id/test-runs/:test_run_id/stop` | Force-close one stuck test_run. `409 { error: "already_completed" }` if it already has an `ended_at`, `404` if not found. On success: `{ result: "aborted", session_ended_at }` — sets `result: "aborted"`, `stop_reason: "manual_stop"` (§7), and also closes the session if this was its last open test_run |
+| POST | `/api/sessions/:id/end` | Force-close the whole session: closes every still-open test_run in it (same as `.../stop`, looped) AND unconditionally sets the session's `ended_at` if unset — even if nothing was open. `404` if the session doesn't exist. On success: `{ session_id, ended_at, stopped_test_run_ids }` |
+
+Both added after the initial pass, not in the original table: every other way to close a test_run or a session (normal completion, the session-end auto-close) requires the PC client's API key, because normally it's the client reporting its own outcome. If that client crashes or loses network before calling any of those, nothing ever closes what it owns — the dashboard has no API key and had no way to intervene, so a "running" or "in progress" state could persist indefinitely. These give the dashboard its own escape hatch, deliberately with a distinct `stop_reason` (`manual_stop`) so it's clear in the data that this wasn't the client's own doing. `.../stop` is fine-grained (one test_run — useful when only one of several concurrently-running components is actually stuck); `.../end` is the blunt "just close this session" action, and is also the only one of the two that can fix a session stuck open with *zero* running test_runs (e.g. every test_run finished normally but the client crashed before its own end-session call) — `.../stop` has nothing to act on in that case since there's no open test_run to target.
 
 ## 5. WebSocket protocol
 
@@ -171,5 +175,7 @@ Client submits raw `tool_exit_code`, `tool_output_raw`, and `summary_stats` (pre
 | `user_abort` | Technician clicked Stop before the test finished |
 | `tool_crash` | The wrapped tool (Prime95/FurMark/TM5/CrystalDiskMark) exited unexpectedly / non-zero outside a normal failure path |
 | `client_error` | The client app itself hit an error unrelated to the hardware under test (e.g. sensor read failure) |
+| `manual_stop` | Set server-side (not by the client) when a technician force-stops a test_run from the dashboard via `POST .../stop` (§4) — used when the owning client is unreachable and never reports anything itself |
+| `session_ended_early` | Set by the session-end auto-close below |
 
-**Session-end auto-close**: if `PATCH /api/sessions/:id` is called while a test_run in that session still has `ended_at IS NULL` (technician closed the app, or it crashed, without a clean test-run completion call), the server closes it itself: sets `ended_at = now()`, `result = 'aborted'`, `stop_reason = 'session_ended_early'`. This guarantees no test_run is ever left permanently open.
+**Session-end auto-close**: if `PATCH /api/sessions/:id` is called while a test_run in that session still has `ended_at IS NULL` (technician closed the app, or it crashed, without a clean test-run completion call), the server closes it itself: sets `ended_at = now()`, `result = 'aborted'`, `stop_reason = 'session_ended_early'`. This guarantees no test_run is left open **as long as something eventually calls `PATCH /api/sessions/:id`** — if the client itself is what's gone (crashed, network-dead, force-quit) and nothing ever calls that either, this auto-close never fires, which is exactly the gap `POST .../stop` (§4) exists to cover from the dashboard side instead.

@@ -53,8 +53,8 @@ test('isValidSessionType: rejects unknown/wrong-case/non-string values', () => {
   }
 });
 
-test('isValidStopReason: accepts exactly user_abort/tool_crash/client_error', () => {
-  for (const v of ['user_abort', 'tool_crash', 'client_error']) {
+test('isValidStopReason: accepts exactly user_abort/tool_crash/client_error/manual_stop', () => {
+  for (const v of ['user_abort', 'tool_crash', 'client_error', 'manual_stop']) {
     assert.equal(isValidStopReason(v), true, `expected ${v} to be valid`);
   }
 });

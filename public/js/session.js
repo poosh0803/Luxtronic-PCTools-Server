@@ -9,7 +9,26 @@
 // internal tool) -- the x-axis is plotted as "seconds elapsed since test_run start" on a plain
 // linear scale rather than wall-clock time.
 
-const SERIES_COLORS = ['#c0392b', '#2980b9', '#27ae60', '#8e44ad', '#d35400', '#16a085', '#7f8c8d'];
+const SERIES_COLORS = ['#e5484d', '#3b82f6', '#22c55e', '#a855f7', '#f59e0b', '#14b8a6', '#94a3b8'];
+
+// Chart.js's own defaults (tick/legend text, gridlines) are a fixed dark gray with no idea this
+// page has a dark-mode stylesheet -- without this, every chart would render near-illegible
+// dark-on-dark text once dark mode is toggled on. Read the same CSS custom properties the rest
+// of the page already uses, rather than hardcoding a second color scheme here that could drift
+// from style.css's. Chart.defaults only affects charts created *after* it's set though -- any
+// already-rendered chart baked its colors in at construction time, so theme.js's
+// window.onThemeChange hook below also rebuilds them from scratch on an actual toggle.
+function applyChartTheme() {
+  const styles = getComputedStyle(document.documentElement);
+  const muted = styles.getPropertyValue('--muted').trim();
+  const border = styles.getPropertyValue('--border').trim();
+  if (window.Chart) {
+    Chart.defaults.color = muted;
+    Chart.defaults.borderColor = border;
+    Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
+  }
+}
+applyChartTheme();
 
 const sessionId = new URLSearchParams(location.search).get('id');
 document.getElementById('pdf-link').href = `/api/sessions/${sessionId}/report.pdf`;
@@ -155,6 +174,46 @@ function buildChart(canvas, seriesMap) {
   });
 }
 
+// One button for the whole session (not one per test-run panel). Calls POST /api/sessions/:id/end
+// (CONTRACT.md §4) rather than looping over the per-test-run .../stop endpoint: a session can be
+// stuck "in progress" two different ways -- (a) a test_run is still running because its owning
+// client vanished, or (b) every test_run already finished normally but the client itself crashed
+// before calling its own end-session PATCH, leaving zero running test_runs but the session still
+// open. Looping over .../stop only ever covers (a), since it has nothing to act on in (b) -- the
+// dedicated .../end endpoint handles both in one call by unconditionally closing the session
+// (and anything still open in it) rather than only reacting to what's currently running.
+async function stopSession() {
+  if (!currentSession || currentSession.ended_at) return;
+
+  const runningRuns = currentSession.test_runs.filter((tr) => !tr.ended_at);
+  const message = runningRuns.length > 0
+    ? `Stop the running ${runningRuns.map((tr) => tr.component.toUpperCase()).join(' + ')} test(s) ` +
+      `and end this session? This marks them as aborted and cannot be undone. Only do this if the ` +
+      `PC running them looks stuck or unreachable.`
+    : `End this session? It has no running tests, but was never marked as ended -- this just closes ` +
+      `it out (e.g. the client likely crashed right after finishing, before it could do that itself).`;
+  if (!confirm(message)) return;
+
+  try {
+    const res = await fetch(`/api/sessions/${sessionId}/end`, { method: 'POST' });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.message || `${res.status} ${res.statusText}`);
+    }
+    await loadSession();
+  } catch (err) {
+    showError(`Failed to end session: ${err.message}`);
+  }
+}
+
+function updateStopSessionButton(session) {
+  const btn = document.getElementById('stop-session-btn');
+  if (!btn) return;
+  btn.style.display = session.ended_at ? 'none' : '';
+  const anyRunning = (session.test_runs || []).some((tr) => !tr.ended_at);
+  btn.textContent = anyRunning ? 'Stop running test(s)' : 'End session';
+}
+
 function renderTestRunPanel(testRun, historicalTelemetry) {
   const panel = document.createElement('div');
   panel.className = 'test-run';
@@ -213,16 +272,31 @@ async function renderAllTestRuns(session) {
   }
 }
 
-async function loadSession() {
-  clearError();
-  try {
-    const session = await fetchJson(`/api/sessions/${sessionId}`);
-    currentSession = session;
-    renderSessionMeta(session);
-    await renderAllTestRuns(session);
-  } catch (err) {
-    showError(`Failed to load session: ${err.message}`);
-  }
+// Guards against overlapping calls stepping on each other. renderAllTestRuns() clears #test-runs
+// and rebuilds it asynchronously (it awaits a telemetry fetch per panel) -- if two calls to
+// loadSession() overlap, the second one's clear can land after the first has already started
+// re-appending panels, leaving duplicates. This is easy to hit in practice: e.g. clicking the new
+// Stop button (below) triggers a direct reload AND a /ws/live "test_run_status" push arrives back
+// at the same tab a moment later triggering another. Coalescing into one in-flight call at a time
+// fixes it for every caller, not just this one.
+let loadSessionPromise = null;
+function loadSession() {
+  if (loadSessionPromise) return loadSessionPromise;
+  loadSessionPromise = (async () => {
+    clearError();
+    try {
+      const session = await fetchJson(`/api/sessions/${sessionId}`);
+      currentSession = session;
+      renderSessionMeta(session);
+      updateStopSessionButton(session);
+      await renderAllTestRuns(session);
+    } catch (err) {
+      showError(`Failed to load session: ${err.message}`);
+    } finally {
+      loadSessionPromise = null;
+    }
+  })();
+  return loadSessionPromise;
 }
 
 function handleLiveMessage(msg) {
@@ -280,6 +354,18 @@ function connectLive() {
 }
 
 document.getElementById('refresh-btn').addEventListener('click', loadSession);
+document.getElementById('stop-session-btn').addEventListener('click', stopSession);
+
+// theme.js calls this on an actual toggle-button click (not on page load). Rebuilding from
+// loadSession() rather than hand-patching each existing Chart.js instance's already-baked-in
+// colors is deliberately the simple option here -- telemetry is persisted server-side as it
+// streams in, so a fresh fetch loses nothing even for a still-running test_run, and it reuses
+// machinery that already exists (destroyAllCharts + renderAllTestRuns) instead of adding a
+// second, more fragile code path just for re-theming.
+window.onThemeChange = () => {
+  applyChartTheme();
+  if (currentSession) loadSession();
+};
 
 loadSession();
 connectLive();
