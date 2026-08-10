@@ -211,12 +211,16 @@ document:
    config subtrees. This implementation uses a naming convention: any numeric config key starting
    with `max_` is an upper-bound hard limit if the *same key name* also appears in
    `summary_stats`; `min_` keys are lower-bound limits the same way. `error_count > 0` is always a
-   hard fail per the literal wording, independent of any config key. Keys that don't fit the
-   convention (e.g. `smart_reallocated_sectors_max`, whose likely `summary_stats` counterpart
-   isn't specified anywhere) are simply not evaluated as thresholds. This only matters in practice
-   for CPU right now (`max_temp_c`, which fits the convention cleanly) -- flagging it now so
-   GPU/RAM/SSD summary_stats key names get chosen client-side to match this convention (or the
-   server-side matching gets revisited) when those wrappers are built.
+   hard fail per the literal wording, independent of any config key.
+
+   **Update once GPU/RAM/SSD landed**: this originally flagged `smart_reallocated_sectors_max` as
+   an example of a key that didn't fit the convention ("max" as a suffix, not a prefix) and so
+   silently never evaluated. Once the client side actually implemented SSD SMART reading
+   (`SsdSmartReader`), its README caught that gap for real and flagged it back here for
+   reconciliation -- fixed by renaming to `max_smart_reallocated_sectors` and adding NVMe-specific
+   `max_smart_percentage_used`/`min_smart_available_spare_percent`/`max_smart_media_errors`
+   alongside it (see CONTRACT.md section 3 and `resultComputation.js`'s comment for the full
+   ATA-vs-NVMe story). No config threshold currently goes unevaluated due to a naming mismatch.
 
 3. **"Borderline" / `flagged` threshold.** Interpreted literally per section 7's own example
    ("within 5% of a threshold") as `observed >= limit * 0.95` (for `max_` limits) or `observed <=

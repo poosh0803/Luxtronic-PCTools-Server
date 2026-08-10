@@ -1,8 +1,8 @@
-{
+﻿{
   "cpu": {
     "tool": "prime95",
     "mode": "blend",
-    "duration_minutes": 60,
+    "duration_minutes": 1,
     "max_temp_c": 95
   },
   "gpu": {
@@ -20,7 +20,11 @@
     "tool": "crystaldiskmark",
     "min_seq_read_mb_s": 400,
     "min_seq_write_mb_s": 300,
-    "smart_reallocated_sectors_max": 0
+    "max_smart_temp_c": 70,
+    "max_smart_reallocated_sectors": 0,
+    "max_smart_percentage_used": 90,
+    "min_smart_available_spare_percent": 10,
+    "max_smart_media_errors": 0
   },
   "concurrency": {
     "cpu_gpu_together_allowed": true,

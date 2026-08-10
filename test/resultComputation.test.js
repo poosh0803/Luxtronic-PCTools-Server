@@ -15,7 +15,11 @@ const config = {
     tool: 'crystaldiskmark',
     min_seq_read_mb_s: 400,
     min_seq_write_mb_s: 300,
-    smart_reallocated_sectors_max: 0,
+    max_smart_temp_c: 70,
+    max_smart_reallocated_sectors: 0,
+    max_smart_percentage_used: 90,
+    min_smart_available_spare_percent: 10,
+    max_smart_media_errors: 0,
   },
   concurrency: { cpu_gpu_together_allowed: true, exclusive_components: ['ram', 'ssd'] },
 };
@@ -69,6 +73,95 @@ test('ssd min_seq_read_mb_s below minimum -> fail', () => {
 
 test('ssd throughput comfortably above minimums -> pass', () => {
   const r = computeResult('ssd', config, { min_seq_read_mb_s: 500, min_seq_write_mb_s: 500 }, null);
+  assert.equal(r.result, 'pass');
+});
+
+// The ssd config subtree carries both ATA-only and NVMe-only SMART thresholds, since a single
+// drive is only ever one bus type (see resultComputation.js's comment for the full story). These
+// tests submit only the summary_stats keys that drive's bus type would realistically populate --
+// the other bus type's config keys are present but have no matching summary_stats key, so per the
+// "missing key -> not evaluated" behavior already covered above, they're silently skipped.
+
+test('ssd (ATA/SATA drive): reallocated sectors over the limit -> fail, even with good throughput', () => {
+  const r = computeResult(
+    'ssd',
+    config,
+    { min_seq_read_mb_s: 500, min_seq_write_mb_s: 500, max_smart_reallocated_sectors: 3 },
+    null
+  );
+  assert.equal(r.result, 'fail');
+});
+
+test('ssd (ATA/SATA drive): zero reallocated sectors, good throughput -> pass', () => {
+  const r = computeResult(
+    'ssd',
+    config,
+    { min_seq_read_mb_s: 500, min_seq_write_mb_s: 500, max_smart_reallocated_sectors: 0 },
+    null
+  );
+  assert.equal(r.result, 'pass');
+});
+
+test('ssd (NVMe drive): percentage_used over the limit -> fail', () => {
+  const r = computeResult(
+    'ssd',
+    config,
+    { min_seq_read_mb_s: 500, min_seq_write_mb_s: 500, max_smart_percentage_used: 95 },
+    null
+  );
+  assert.equal(r.result, 'fail');
+});
+
+test('ssd (NVMe drive): available spare below the minimum -> fail', () => {
+  const r = computeResult(
+    'ssd',
+    config,
+    { min_seq_read_mb_s: 500, min_seq_write_mb_s: 500, min_smart_available_spare_percent: 5 },
+    null
+  );
+  assert.equal(r.result, 'fail');
+});
+
+test('ssd (NVMe drive): healthy wear/spare levels, good throughput -> pass', () => {
+  const r = computeResult(
+    'ssd',
+    config,
+    {
+      min_seq_read_mb_s: 500,
+      min_seq_write_mb_s: 500,
+      max_smart_percentage_used: 12,
+      min_smart_available_spare_percent: 95,
+      max_smart_media_errors: 0,
+    },
+    null
+  );
+  assert.equal(r.result, 'pass');
+});
+
+// Regression test for a real bug the SSD tests above caught: a zero-value limit made the 5%
+// borderline band degenerate to "observed >= 0", which flagged the healthy observed=0 case on
+// every zero-tolerance threshold (max_smart_reallocated_sectors: 0, max_errors: 0, etc.) forever.
+test('max_ threshold with limit exactly 0: observed 0 -> pass, not flagged', () => {
+  const r = computeResult(
+    'ssd',
+    config,
+    { min_seq_read_mb_s: 500, min_seq_write_mb_s: 500, max_smart_reallocated_sectors: 0 },
+    null
+  );
+  assert.equal(r.result, 'pass');
+});
+
+test('min_ threshold with limit exactly 0: observed 0 -> pass, not flagged', () => {
+  const zeroMinConfig = {
+    ...config,
+    ssd: { ...config.ssd, min_smart_available_spare_percent: 0 },
+  };
+  const r = computeResult(
+    'ssd',
+    zeroMinConfig,
+    { min_seq_read_mb_s: 500, min_seq_write_mb_s: 500, min_smart_available_spare_percent: 0 },
+    null
+  );
   assert.equal(r.result, 'pass');
 });
 
