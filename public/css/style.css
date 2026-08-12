@@ -449,6 +449,14 @@ tr.session-row:hover {
   margin-top: 2px;
 }
 
+/* Live readout (public/js/session.js buildLiveReadout) -- current sensor values under the chart,
+   so reading them doesn't need a mouse hover. Bigger than the summary-stat tiles below it: this
+   is the number someone's actually watching while a test runs, the summary stats are a
+   post-completion record. */
+.live-readout .value {
+  font-size: 20px;
+}
+
 .actions-row {
   display: flex;
   gap: 8px;

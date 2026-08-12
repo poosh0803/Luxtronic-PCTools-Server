@@ -95,6 +95,56 @@ function renderSessionMeta(session) {
   `;
 }
 
+// Live readout: current-value tiles under the chart, so reading "what's the temp/load/frequency
+// right now" doesn't require hovering the chart with a mouse -- glanceable, and works on
+// touch/mobile where hover doesn't really exist at all. Generic over whatever sensors a test_run
+// actually has (not hardcoded to specific CPU sensor names) so it keeps working unchanged once
+// GPU/RAM/SSD start sending their own telemetry. Color-matched to each series' chart line (same
+// SERIES_COLORS index) so a tile and its line are visually tied together at a glance.
+function formatSensorValue(v) {
+  if (typeof v !== 'number') return String(v);
+  return Number.isInteger(v) ? String(v) : v.toFixed(1);
+}
+
+function liveReadoutTileHtml(sensorName, value, index) {
+  const color = SERIES_COLORS[index % SERIES_COLORS.length];
+  return `<div class="stat-tile" style="border-left: 3px solid ${color}">
+    <div class="label">${sensorName}</div>
+    <div class="value live-readout-value" data-readout-sensor="${sensorName}">${formatSensorValue(value)}</div>
+  </div>`;
+}
+
+function buildLiveReadout(seriesMap) {
+  const names = [...seriesMap.keys()];
+  if (names.length === 0) return '<p class="muted">No sensor data yet.</p>';
+  const tiles = names
+    .map((name, i) => {
+      const points = seriesMap.get(name);
+      const last = points.length ? points[points.length - 1].y : null;
+      return liveReadoutTileHtml(name, last, i);
+    })
+    .join('');
+  return `<div class="stats-grid live-readout">${tiles}</div>`;
+}
+
+/** Updates one sensor's tile in place, or adds a new tile if this sensor wasn't seen before
+ * (mirrors how a new sensor mid-stream also gets a new chart axis in handleLiveMessage). */
+function updateReadoutTile(readoutEl, sensorName, value, index) {
+  if (!readoutEl) return;
+  const valueEl = readoutEl.querySelector(`[data-readout-sensor="${sensorName}"]`);
+  if (valueEl) {
+    valueEl.textContent = formatSensorValue(value);
+    return;
+  }
+  const grid = readoutEl.querySelector('.stats-grid');
+  const tileHtml = liveReadoutTileHtml(sensorName, value, index);
+  if (grid) {
+    grid.insertAdjacentHTML('beforeend', tileHtml);
+  } else {
+    readoutEl.innerHTML = `<div class="stats-grid live-readout">${tileHtml}</div>`;
+  }
+}
+
 function statTiles(summaryStats) {
   if (!summaryStats || Object.keys(summaryStats).length === 0) {
     return '<p class="muted">No summary stats yet.</p>';
@@ -228,6 +278,7 @@ function renderTestRunPanel(testRun, historicalTelemetry) {
       ${testRun.stop_reason ? ` &middot; Stopped: ${testRun.stop_reason}` : ''}
     </div>
     <div class="chart-wrap"><canvas></canvas></div>
+    <div class="readout-container"></div>
     <div class="stats-container">${statTiles(testRun.summary_stats)}</div>
   `;
 
@@ -243,7 +294,9 @@ function renderTestRunPanel(testRun, historicalTelemetry) {
   for (const points of seriesMap.values()) points.sort((a, b) => a.x - b.x);
 
   const chart = buildChart(canvas, seriesMap);
-  chartState.set(testRun.id, { chart, seriesMap, startedAtMs, isActive: !testRun.ended_at });
+  const readoutEl = panel.querySelector('.readout-container');
+  readoutEl.innerHTML = buildLiveReadout(seriesMap);
+  chartState.set(testRun.id, { chart, seriesMap, startedAtMs, isActive: !testRun.ended_at, readoutEl });
 
   return panel;
 }
@@ -304,7 +357,8 @@ function handleLiveMessage(msg) {
     const state = chartState.get(msg.test_run_id);
     if (!state || !state.isActive) return; // not an active run we're charting live
     const elapsed = (new Date(msg.ts).getTime() - state.startedAtMs) / 1000;
-    if (!state.seriesMap.has(msg.sensor_name)) {
+    const isNewSensor = !state.seriesMap.has(msg.sensor_name);
+    if (isNewSensor) {
       const idx = state.seriesMap.size;
       state.seriesMap.set(msg.sensor_name, []);
       const color = addSensorScale(state.chart, msg.sensor_name, idx);
@@ -321,6 +375,7 @@ function handleLiveMessage(msg) {
     }
     state.seriesMap.get(msg.sensor_name).push({ x: elapsed, y: msg.value });
     state.chart.update('none');
+    updateReadoutTile(state.readoutEl, msg.sensor_name, msg.value, state.seriesMap.size - 1);
   } else if (msg.type === 'test_run_status') {
     // A test_run started, or finished -- re-fetch the full session so the panel list, badges,
     // and summary stats reflect the latest DB state. This also covers "cpu+gpu together" mode
