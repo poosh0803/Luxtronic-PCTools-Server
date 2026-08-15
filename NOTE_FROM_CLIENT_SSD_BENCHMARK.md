@@ -1,3 +1,10 @@
+**RESOLVED (server side):** `statTiles()` (`public/js/session.js`) and `pdf.js`'s summary table
+now render `min_seq_read_mb_s`/`min_seq_write_mb_s` as "Sequential Read"/"Sequential Write" with
+an " MB/s" suffix, everything else unchanged (small manual label/unit map, not a general system,
+per the ask below). Verified against the real session this note references
+(`1ebba806-4878-464d-b6de-34d50631331b`) on the live production dashboard and its PDF export --
+"Sequential Read 3131.72 MB/s" / "Sequential Write 61.84 MB/s" both render correctly.
+
 # Note from the client side: SSD benchmark test (DiskSpd) now wired up
 
 Status: **live-verified end-to-end against the real running server** (2026-08-15) - technician ran

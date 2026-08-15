@@ -145,12 +145,30 @@ function updateReadoutTile(readoutEl, sensorName, value, index) {
   }
 }
 
+// Friendlier label/unit for specific summary_stats keys -- everything else still renders as the
+// raw key (uppercased via .label's CSS) with no unit. Requested directly by the client side
+// (NOTE_FROM_CLIENT_SSD_BENCHMARK.md) after a real technician found "MIN_SEQ_READ_MB_S / 3131.72"
+// hard to read at a glance on a real SSD benchmark run. Deliberately small and manual, not a
+// general "pretty units for every stat" system -- just the two keys actually read at a glance to
+// judge a benchmark. Keep in sync by hand with the identical map in src/lib/pdf.js -- no shared
+// module between a browser script and server-side Node code without a build step, which this
+// project deliberately doesn't have.
+const STAT_DISPLAY = {
+  min_seq_read_mb_s: { label: 'Sequential Read', unit: ' MB/s' },
+  min_seq_write_mb_s: { label: 'Sequential Write', unit: ' MB/s' },
+};
+
 function statTiles(summaryStats) {
   if (!summaryStats || Object.keys(summaryStats).length === 0) {
     return '<p class="muted">No summary stats yet.</p>';
   }
   return `<div class="stats-grid">${Object.entries(summaryStats)
-    .map(([k, v]) => `<div class="stat-tile"><div class="label">${k}</div><div class="value">${v}</div></div>`)
+    .map(([k, v]) => {
+      const display = STAT_DISPLAY[k];
+      const label = display ? display.label : k;
+      const value = display ? `${v}${display.unit}` : v;
+      return `<div class="stat-tile"><div class="label">${label}</div><div class="value">${value}</div></div>`;
+    })
     .join('')}</div>`;
 }
 
@@ -224,6 +242,53 @@ function buildChart(canvas, seriesMap) {
   });
 }
 
+// Fallback for a test_run with a completed benchmark result but zero streamed telemetry -- the
+// SSD DiskSpd benchmark (NOTE_FROM_CLIENT_SSD_BENCHMARK.md) is the current example: it produces
+// two single final MB/s numbers per pass (~20s each), not a continuous stream of readings like
+// Prime95's temp/load, so there's genuinely no time-series data for buildChart() to plot -- an
+// empty line chart with "No sensor data yet." isn't a bug, it's an accurate reflection of what
+// was sent, but it's also not useful. This renders a small horizontal bar instead, using numbers
+// already in summary_stats, so a completed benchmark still gets *some* visual rather than nothing.
+// Keyed on the same two keys as STAT_DISPLAY above rather than on component === 'ssd', so this
+// isn't SSD-specific by name -- if a future benchmark-style component populates the same
+// min_seq_read_mb_s/min_seq_write_mb_s shape, this picks it up automatically. If a component ever
+// starts streaming real interval telemetry instead (the natural next step for DiskSpd, since it
+// does support periodic reporting), buildChart() takes over again on its own -- this fallback
+// only applies when the telemetry series is empty.
+function buildThroughputBarChart(canvas, summaryStats) {
+  const labels = [];
+  const values = [];
+  const colors = [];
+  if (typeof summaryStats.min_seq_read_mb_s === 'number') {
+    labels.push('Sequential Read');
+    values.push(summaryStats.min_seq_read_mb_s);
+    colors.push(SERIES_COLORS[0]);
+  }
+  if (typeof summaryStats.min_seq_write_mb_s === 'number') {
+    labels.push('Sequential Write');
+    values.push(summaryStats.min_seq_write_mb_s);
+    colors.push(SERIES_COLORS[1]);
+  }
+
+  return new Chart(canvas.getContext('2d'), {
+    type: 'bar',
+    data: { labels, datasets: [{ data: values, backgroundColor: colors, borderRadius: 4, maxBarThickness: 40 }] },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: (ctx) => `${ctx.parsed.x} MB/s` } },
+      },
+      scales: {
+        x: { title: { display: true, text: 'MB/s' }, beginAtZero: true },
+      },
+    },
+  });
+}
+
 // One button for the whole session (not one per test-run panel). Calls POST /api/sessions/:id/end
 // (CONTRACT.md §4) rather than looping over the per-test-run .../stop endpoint: a session can be
 // stuck "in progress" two different ways -- (a) a test_run is still running because its owning
@@ -293,9 +358,24 @@ function renderTestRunPanel(testRun, historicalTelemetry) {
   }
   for (const points of seriesMap.values()) points.sort((a, b) => a.x - b.x);
 
-  const chart = buildChart(canvas, seriesMap);
+  const stats = testRun.summary_stats;
+  const hasThroughputResult = stats && (
+    typeof stats.min_seq_read_mb_s === 'number' || typeof stats.min_seq_write_mb_s === 'number'
+  );
+  const useThroughputFallback = seriesMap.size === 0 && hasThroughputResult;
+
+  const chart = useThroughputFallback
+    ? buildThroughputBarChart(canvas, stats)
+    : buildChart(canvas, seriesMap);
+
   const readoutEl = panel.querySelector('.readout-container');
-  readoutEl.innerHTML = buildLiveReadout(seriesMap);
+  // Skip the live-readout area entirely when the bar-chart fallback is showing: it would only
+  // ever say "No sensor data yet." right below a chart that's visibly showing data, which reads
+  // as a contradiction -- the same numbers are already in both the bar chart and the stat tiles
+  // below, so there's nothing this row would add here.
+  if (!useThroughputFallback) {
+    readoutEl.innerHTML = buildLiveReadout(seriesMap);
+  }
   chartState.set(testRun.id, { chart, seriesMap, startedAtMs, isActive: !testRun.ended_at, readoutEl });
 
   return panel;
