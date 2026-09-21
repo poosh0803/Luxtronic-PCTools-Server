@@ -1,0 +1,24 @@
+# Explicit project name below is required: this file lives in a `docker/`
+# folder just like every other Luxtronic project's compose file, so without
+# a name Compose defaults the project (and therefore the named volume) to
+# "docker" for all of them - causing sibling projects to silently share one
+# Postgres data volume. Do not remove this.
+name: luxtronic-pctools
+
+services:
+  db:
+    image: postgres:17
+    container_name: luxtronic_pctools_db
+    restart: always
+    environment:
+      POSTGRES_USER: luxtronic_user
+      POSTGRES_PASSWORD: luxtronic_password
+      POSTGRES_DB: luxtronic_pctools
+    ports:
+      - "5434:5432"
+    volumes:
+      - luxtronic_pctools_postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+
+volumes:
+  luxtronic_pctools_postgres_data:

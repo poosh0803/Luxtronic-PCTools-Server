@@ -33,14 +33,19 @@ add a heavy ORM/framework beyond what's needed" instruction.
 
 You need a local Postgres reachable via a connection string. Two easy options:
 
-**Docker (recommended for a throwaway local dev DB):**
+**Docker (recommended):**
 
 ```
-docker run -d --name luxtronic_pctools_db -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=luxtronic_pctools -p 5434:5432 postgres:16-alpine
+cd docker
+docker compose up -d
 ```
 
-(Port 5434 mirrors the production port from PROJECT_PLAN.md section 5, but for local dev any free
-port works -- it's just what `.env.example` defaults to.)
+This starts Postgres 17 (`luxtronic_user` / `luxtronic_password`, database `luxtronic_pctools`,
+host port 5434, named volume `luxtronic_pctools_postgres_data`) and, on the first start against an
+empty volume, runs `docker/init-scripts/001_schema.sql` to create every table -- so you can skip
+step 4 below. `001_schema.sql` mirrors `migrations/001_init.sql` and records it in
+`schema_migrations`; when you add a new migration, add it to `migrations/` and apply it with
+`npm run migrate`. The init scripts only ever run on a fresh volume.
 
 **Or use an existing local Postgres install:** create a database, e.g.:
 
@@ -54,7 +59,7 @@ createdb luxtronic_pctools
 cp .env.example .env
 ```
 
-Edit `.env` if your `DATABASE_URL` differs from the default (`postgres://postgres:postgres@localhost:5434/luxtronic_pctools`).
+Edit `.env` if your `DATABASE_URL` differs from the default (`postgres://luxtronic_user:luxtronic_password@localhost:5434/luxtronic_pctools`).
 
 ### 3. Install dependencies
 
