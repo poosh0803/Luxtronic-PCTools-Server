@@ -240,7 +240,7 @@ function addSensorScale(chart, sensorName, index) {
 function buildChart(canvas, seriesMap) {
   const names = [...seriesMap.keys()];
   const scales = {
-    x: { type: 'linear', title: { display: true, text: 'Elapsed time (s)' } },
+    x: { type: 'linear', min: 0, title: { display: true, text: 'Elapsed time (s)' } },
   };
   const datasets = names.map((name, i) => {
     const color = SERIES_COLORS[i % SERIES_COLORS.length];
@@ -392,11 +392,16 @@ function renderTestRunPanel(testRun, historicalTelemetry) {
   `;
 
   const canvas = panel.querySelector('canvas');
-  const startedAtMs = new Date(testRun.started_at).getTime();
+  // 0 s is the run's first sample, not started_at: samples carry the PC's clock and started_at is
+  // the server's, so any clock difference would otherwise push the first samples below zero.
+  const firstSampleMs = historicalTelemetry.length
+    ? historicalTelemetry.reduce((min, p) => Math.min(min, new Date(p.ts).getTime()), Infinity) // not Math.min(...all): a long run has tens of thousands of samples
+    : null;
+  const startedAtMs = firstSampleMs ?? new Date(testRun.started_at).getTime();
 
   const seriesMap = new Map();
   for (const point of historicalTelemetry) {
-    const elapsed = (new Date(point.ts).getTime() - startedAtMs) / 1000;
+    const elapsed = Math.max(0, (new Date(point.ts).getTime() - startedAtMs) / 1000);
     if (!seriesMap.has(point.sensor_name)) seriesMap.set(point.sensor_name, []);
     seriesMap.get(point.sensor_name).push({ x: elapsed, y: point.value });
   }
@@ -420,7 +425,7 @@ function renderTestRunPanel(testRun, historicalTelemetry) {
   if (!useThroughputFallback) {
     readoutEl.innerHTML = buildLiveReadout(seriesMap);
   }
-  chartState.set(testRun.id, { chart, seriesMap, startedAtMs, isActive: !testRun.ended_at, readoutEl });
+  chartState.set(testRun.id, { chart, seriesMap, startedAtMs, hasSamples: firstSampleMs !== null, isActive: !testRun.ended_at, readoutEl });
 
   return panel;
 }
@@ -496,7 +501,11 @@ function handleLiveMessage(msg) {
   if (msg.type === 'telemetry') {
     const state = chartState.get(msg.test_run_id);
     if (!state || !state.isActive) return; // not an active run we're charting live
-    const elapsed = (new Date(msg.ts).getTime() - state.startedAtMs) / 1000;
+    if (!state.hasSamples) {
+      state.startedAtMs = new Date(msg.ts).getTime();
+      state.hasSamples = true;
+    }
+    const elapsed = Math.max(0, (new Date(msg.ts).getTime() - state.startedAtMs) / 1000);
     const isNewSensor = !state.seriesMap.has(msg.sensor_name);
     if (isNewSensor) {
       const idx = state.seriesMap.size;
