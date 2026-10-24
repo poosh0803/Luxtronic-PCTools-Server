@@ -263,22 +263,29 @@ function generateSessionReportPdf({ session, testRuns, telemetryByRun }) {
   doc.moveDown(0.5);
 
   doc.font('Helvetica').fontSize(10).fillColor('#000');
+  const hasSpec = describeSystemInfo(session.system_info).length > 0;
   const infoRows = [
     ['Session ID', session.id],
-    ['PC (mobo serial)', session.mobo_serial],
     ['Customer', session.customer_name || '-'],
     ['Session type', session.session_type],
     ['Technician', session.technician_name],
     ['Started', fmtDate(session.started_at)],
     ['Ended', fmtDate(session.ended_at)],
     ['Notes', session.notes || '-'],
-    ['SSD serials', (session.ssd_serials || []).join(', ') || '-'],
-    [
-      'Other serials',
-      Object.entries(session.other_serials || {})
-        .map(([k, v]) => `${k}: ${v}`)
-        .join(', ') || '-',
-    ],
+    // The serials are listed in the System specification section when the client sent one; only
+    // sessions without it (older clients) still need them here to identify the PC.
+    ...(hasSpec
+      ? []
+      : [
+          ['PC (mobo serial)', session.mobo_serial],
+          ['SSD serials', (session.ssd_serials || []).join(', ') || '-'],
+          [
+            'Other serials',
+            Object.entries(session.other_serials || {})
+              .map(([k, v]) => `${k}: ${v}`)
+              .join(', ') || '-',
+          ],
+        ]),
   ];
   for (const [label, value] of infoRows) {
     doc.font('Helvetica-Bold').text(`${label}: `, { continued: true }).font('Helvetica').text(String(value));

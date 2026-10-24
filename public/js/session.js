@@ -100,18 +100,23 @@ function renderSessionMeta(session) {
   const other = Object.entries(session.other_serials || {})
     .map(([k, v]) => `${k}: ${v}`)
     .join(', ') || '-';
+  // The motherboard / drive serials are part of the "System specification" boxes when the client
+  // sent a spec, so repeating them here is noise. Sessions without one (older clients) still show
+  // them, since otherwise nothing identifies the PC.
+  const hasSpec = (session.system_summary || []).length > 0;
+  const serialRows = hasSpec ? '' : `
+      <dt>PC serial</dt><dd>${session.mobo_serial}</dd>
+      <dt>SSD serials</dt><dd>${ssd}</dd>
+      <dt>Other serials</dt><dd>${other}</dd>`;
   el.innerHTML = `
     <h2>Session ${session.id}</h2>
     <dl>
-      <dt>PC serial</dt><dd>${session.mobo_serial}</dd>
       <dt>Customer</dt><dd>${session.customer_name || '-'}</dd>
       <dt>Type</dt><dd>${session.session_type}</dd>
       <dt>Technician</dt><dd>${session.technician_name}</dd>
       <dt>Started</dt><dd>${fmtDateTime(session.started_at)}</dd>
       <dt>Ended</dt><dd>${session.ended_at ? fmtDateTime(session.ended_at) : '<span class="badge running">in progress</span>'}</dd>
-      <dt>Notes</dt><dd>${session.notes || '-'}</dd>
-      <dt>SSD serials</dt><dd>${ssd}</dd>
-      <dt>Other serials</dt><dd>${other}</dd>
+      <dt>Notes</dt><dd>${session.notes || '-'}</dd>${serialRows}
     </dl>
   `;
 }
