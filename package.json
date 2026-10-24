@@ -9,6 +9,7 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "migrate": "node db/migrate.js",
+    "seed:demo": "node scripts/seed-demo-session.js",
     "seed:technician": "node scripts/create-technician.js",
     "test": "node --test"
   },
