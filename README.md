@@ -193,8 +193,7 @@ setup:
 
 1. `npm run migrate` against a fresh DB, then `npm run seed:technician -- "Tech"` -- confirm it
    prints an API key.
-2. `GET /api/config` with `X-Api-Key: <key>` -- confirm it returns the full config JSON; without
-   the header, confirm `401`.
+2. `GET /api/config` (no key needed, read-only, viewable in a browser) -- confirm it returns the full config JSON.
 3. `POST /api/sessions` with a `mobo_serial`/`session_type` -- confirm `201` + `session_id`, and
    that a `machines` row was created/touched.
 4. `POST /api/sessions/:id/test-runs` with `{"component":"cpu"}` -- confirm `201` + `test_run_id`.

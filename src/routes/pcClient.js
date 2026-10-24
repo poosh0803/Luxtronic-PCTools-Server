@@ -30,7 +30,7 @@ const router = express.Router();
 // client needs the concurrency subtree regardless of which component(s) it's about to run, plus
 // potentially more than one component subtree in "cpu+gpu together" mode. Judgment call flagged in
 // the final report since CONTRACT.md doesn't pin down the exact response shape here.
-router.get('/api/config', requireApiKey(), (req, res) => {
+router.get('/api/config', (req, res) => {
   try {
     const config = loadConfig();
     res.json(config);
