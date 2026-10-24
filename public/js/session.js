@@ -106,11 +106,20 @@ function formatSensorValue(v) {
   return Number.isInteger(v) ? String(v) : v.toFixed(1);
 }
 
+// Readable label + unit for the live tiles of sensors whose raw name isn't self-explanatory.
+// Everything not listed keeps its raw sensor name and bare number, as before.
+const SENSOR_DISPLAY = {
+  ssd_read_mb_s: { label: 'Read speed', unit: ' MB/s' },
+  ssd_write_mb_s: { label: 'Write speed', unit: ' MB/s' },
+  ram_used_pct: { label: 'System memory in use', unit: ' %' },
+};
+
 function liveReadoutTileHtml(sensorName, value, index) {
   const color = SERIES_COLORS[index % SERIES_COLORS.length];
+  const display = SENSOR_DISPLAY[sensorName];
   return `<div class="stat-tile" style="border-left: 3px solid ${color}">
-    <div class="label">${sensorName}</div>
-    <div class="value live-readout-value" data-readout-sensor="${sensorName}">${formatSensorValue(value)}</div>
+    <div class="label">${display ? display.label : sensorName}</div>
+    <div class="value live-readout-value" data-readout-sensor="${sensorName}" data-unit="${display ? display.unit : ''}">${formatSensorValue(value)}${display ? display.unit : ''}</div>
   </div>`;
 }
 
@@ -133,7 +142,7 @@ function updateReadoutTile(readoutEl, sensorName, value, index) {
   if (!readoutEl) return;
   const valueEl = readoutEl.querySelector(`[data-readout-sensor="${sensorName}"]`);
   if (valueEl) {
-    valueEl.textContent = formatSensorValue(value);
+    valueEl.textContent = formatSensorValue(value) + (valueEl.dataset.unit || '');
     return;
   }
   const grid = readoutEl.querySelector('.stats-grid');
@@ -426,9 +435,20 @@ async function renderAllTestRuns(session) {
 // Stop button (below) triggers a direct reload AND a /ws/live "test_run_status" push arrives back
 // at the same tab a moment later triggering another. Coalescing into one in-flight call at a time
 // fixes it for every caller, not just this one.
+//
+// IMPORTANT: a call that arrives while a load is in flight must not just share that load's result.
+// That load already fetched the session before the new event happened, so its result is stale:
+// e.g. test 1 finishing triggers a load, and test 2 starting a moment later (while that load is
+// still fetching telemetry per panel) used to get the old promise back -- and test 2's box never
+// appeared until a manual refresh. Instead the late caller sets reloadQueued, and one more full
+// load runs as soon as the current one ends.
 let loadSessionPromise = null;
+let reloadQueued = false;
 function loadSession() {
-  if (loadSessionPromise) return loadSessionPromise;
+  if (loadSessionPromise) {
+    reloadQueued = true;
+    return loadSessionPromise;
+  }
   loadSessionPromise = (async () => {
     clearError();
     try {
@@ -441,6 +461,10 @@ function loadSession() {
       showError(`Failed to load session: ${err.message}`);
     } finally {
       loadSessionPromise = null;
+    }
+    if (reloadQueued) {
+      reloadQueued = false;
+      await loadSession();
     }
   })();
   return loadSessionPromise;
@@ -478,12 +502,19 @@ function handleLiveMessage(msg) {
   }
 }
 
+let liveHasConnectedBefore = false;
 function connectLive() {
   if (liveSocket) {
     liveSocket.close();
   }
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
   liveSocket = new WebSocket(`${protocol}//${location.host}/ws/live?session_id=${sessionId}`);
+  liveSocket.addEventListener('open', () => {
+    // Status pushes sent while the socket was down (server restart, network blip) are gone for
+    // good, so after a RE-connect reload the session to pick up any test that started/finished.
+    if (liveHasConnectedBefore) loadSession();
+    liveHasConnectedBefore = true;
+  });
   liveSocket.addEventListener('message', (event) => {
     try {
       handleLiveMessage(JSON.parse(event.data));
