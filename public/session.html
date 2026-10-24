@@ -5,29 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Luxtronic PCTools -- Session Detail</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%F0%9F%96%A5%EF%B8%8F</text></svg>" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
   <link rel="stylesheet" href="/css/style.css" />
-  <script>
-    // Applies the remembered theme (default: light) before first paint, so there's no flash of
-    // the wrong theme while style.css/theme.js load. Deliberately does NOT look at
-    // prefers-color-scheme -- dark mode here is opt-in via the toggle button only.
-    document.documentElement.setAttribute(
-      'data-theme',
-      localStorage.getItem('luxtronic-theme') === 'dark' ? 'dark' : 'light'
-    );
-  </script>
 </head>
 <body>
+  <script>try { if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-mode'); } catch (e) {}</script>
   <header class="topbar">
     <div class="brand">
       <span class="brand-mark" aria-hidden="true">L</span>
       <h1>Luxtronic PCTools</h1>
+      <span class="tagline">Hardware test dashboard</span>
     </div>
-    <div class="topbar-right">
-      <a href="/index.html">&larr; All sessions</a>
-      <a href="/technicians.html">Technicians</a>
-      <button type="button" class="theme-toggle" id="theme-toggle">🌙 Dark</button>
-    </div>
+    <button type="button" class="dark-toggle" id="darkModeToggle" aria-label="Toggle dark mode"><i class="fas fa-moon" id="themeIcon"></i></button>
   </header>
+  <nav class="nav-bar">
+    <a class="nav-item" href="/index.html"><i class="fas fa-gauge-high"></i> Sessions</a>
+    <a class="nav-item" href="/technicians.html"><i class="fas fa-users"></i> Technicians</a>
+  </nav>
   <main>
     <div id="error" class="error-banner" style="display:none"></div>
 

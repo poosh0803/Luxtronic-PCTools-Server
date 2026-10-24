@@ -1,98 +1,109 @@
-/* Internal tool for 2 technicians -- still mobile-first responsive (PROJECT_PLAN.md requires
-   phone-browser usability): single column by default, wider layouts only above 700px. "Nicer"
-   here means clearer hierarchy and less visual noise, not more decoration -- the badges, stat
-   tiles and chart area are the things a technician actually scans under time pressure, so those
-   get the most attention. Respects prefers-color-scheme automatically; no in-app toggle since
-   nothing asked for one. */
+/* Follows LUXTRONIC-DESIGN-GUIDELINES.md (amber brand, cream page background, two-row header,
+   class-based dark mode via body.dark-mode). Internal tool for 2 technicians -- still mobile-first
+   responsive (PROJECT_PLAN.md requires phone-browser usability): single column by default, wider
+   layouts only above 700px. Dark mode is an explicit toggle (public/js/theme.js), never inferred
+   from prefers-color-scheme. */
 
 :root {
-  --bg: #eef1f6;
+  --brand: #dda84b;
+  --brand-dark: #c99633;
+  --bg: #f7f3ea;
   --panel-bg: #ffffff;
-  --panel-border: #e3e7ee;
-  --panel-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
-  --text: #131722;
-  --muted: #667085;
-  --border: #e3e7ee;
-  --accent: #2554e0;
-  --accent-hover: #1c42b8;
-  --accent-soft-bg: #eaf0ff;
+  --panel-border: transparent;
+  --panel-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  --text: #222222;
+  --muted: #666666;
+  --border: #eeeeee;
+  --input-border: #dddddd;
+  --accent: #dda84b;
+  --accent-hover: #c99633;
+  --accent-text: #ffffff;
+  --accent-soft-bg: rgba(221, 168, 75, 0.22);
   --input-bg: #ffffff;
-  --row-hover: #f3f6fd;
-  --stat-bg: #f7f8fb;
+  --row-hover: #faf6ec;
+  --stat-bg: #faf8f2;
   --code-bg: #f2f3f6;
+  --header-bg: #dda84b;
+  --header-border: rgba(255, 255, 255, 0.28);
+  --nav-hover: rgba(255, 255, 255, 0.22);
+  --nav-active-bg: rgba(255, 255, 255, 0.34);
+  --nav-active-text: #ffffff;
 
-  --pass: #15803d;
-  --pass-bg: #e7f6ec;
-  --fail: #c0392b;
-  --fail-bg: #fdecea;
-  --flagged: #a5670f;
-  --flagged-bg: #fdf3df;
-  --aborted: #55606f;
-  --aborted-bg: #eef0f3;
-  --live: #d6382b;
+  --pass: #388e3c;
+  --pass-bg: #e8f5e9;
+  --fail: #d32f2f;
+  --fail-bg: #ffebee;
+  --flagged: #ffa000;
+  --flagged-bg: #fff8e1;
+  --aborted: #607d8b;
+  --aborted-bg: #eceff1;
+  --live: #1976d2;
+  --live-bg: #e3f2fd;
 
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 8px;
 }
 
-/* Applied only via the theme-toggle button (public/js/theme.js), never automatically from the
-   OS/browser preference -- defaulting to whatever the system happens to be set to surprised
-   someone the first time this shipped, so dark mode is now opt-in and remembered per-browser
-   via localStorage rather than inherited silently. */
-:root[data-theme="dark"] {
-    --bg: #0d1117;
-    --panel-bg: #151b26;
-    --panel-border: #262f3f;
-    --panel-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 10px rgba(0, 0, 0, 0.25);
-    --text: #e7eaf1;
-    --muted: #93a0b8;
-    --border: #262f3f;
-    --accent: #5b8cff;
-    --accent-hover: #7ba1ff;
-    --accent-soft-bg: rgba(91, 140, 255, 0.14);
-    --input-bg: #10151f;
-    --row-hover: #1a2130;
-    --stat-bg: #10151f;
-    --code-bg: #10151f;
+body.dark-mode {
+  color-scheme: dark;
+  --bg: #121212;
+  --panel-bg: #1e1e1e;
+  --panel-border: #333333;
+  --panel-shadow: none;
+  --text: #e8e8e8;
+  --muted: #aaaaaa;
+  --border: #333333;
+  --input-border: #444444;
+  --accent: #f0b33e;
+  --accent-hover: #d89b23;
+  --accent-text: #1a1a1a;
+  --accent-soft-bg: rgba(240, 179, 62, 0.2);
+  --input-bg: #121212;
+  --row-hover: #262626;
+  --stat-bg: #181818;
+  --code-bg: #181818;
+  --header-bg: #1a1a1a;
+  --header-border: #333333;
+  --nav-hover: rgba(248, 193, 70, 0.12);
+  --nav-active-bg: rgba(248, 193, 70, 0.18);
+  --nav-active-text: #f8c146;
 
-    --pass: #4ade80;
-    --pass-bg: rgba(74, 222, 128, 0.12);
-    --fail: #f27060;
-    --fail-bg: rgba(242, 112, 96, 0.14);
-    --flagged: #e7b34e;
-    --flagged-bg: rgba(231, 179, 78, 0.14);
-    --aborted: #a3adc0;
-    --aborted-bg: rgba(163, 173, 192, 0.12);
-    --live: #ff5c4d;
+  --pass: #66bb6a;
+  --pass-bg: rgba(102, 187, 106, 0.16);
+  --fail: #ef5350;
+  --fail-bg: rgba(239, 83, 80, 0.16);
+  --flagged: #ffb74d;
+  --flagged-bg: rgba(255, 183, 77, 0.16);
+  --aborted: #90a4ae;
+  --aborted-bg: rgba(144, 164, 174, 0.16);
+  --live: #64b5f6;
+  --live-bg: rgba(100, 181, 246, 0.16);
 }
 
 * {
   box-sizing: border-box;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   background: var(--bg);
   color: var(--text);
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.45;
   -webkit-font-smoothing: antialiased;
 }
 
+/* Row 1: brand header */
 header.topbar {
-  background: var(--panel-bg);
-  border-bottom: 1px solid var(--panel-border);
-  padding: 12px 20px;
+  background: var(--header-bg);
+  color: #fff;
+  padding: 8px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap;
   gap: 8px;
-  position: sticky;
-  top: 0;
-  z-index: 10;
 }
 
 .brand {
@@ -102,66 +113,103 @@ header.topbar {
 }
 
 .brand-mark {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, var(--accent), #7fa2ff);
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  background: #fff;
+  color: var(--brand-dark);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 15px;
+  font-size: 16px;
+  font-weight: 700;
   flex: none;
-  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.15);
 }
 
 header.topbar h1 {
   font-size: 17px;
   margin: 0;
   font-weight: 700;
-  letter-spacing: -0.01em;
+  color: #fff;
 }
 
-header.topbar .muted {
-  font-size: 13px;
+.tagline {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.85);
 }
 
-header.topbar a {
-  color: var(--accent);
-  text-decoration: none;
-  font-size: 14px;
-  font-weight: 500;
+body.dark-mode .tagline {
+  color: var(--muted);
+}
+
+.dark-toggle {
+  width: 32px;
+  height: 32px;
+  padding: 0;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-}
-
-header.topbar a:hover {
-  color: var(--accent-hover);
-}
-
-.topbar-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.theme-toggle {
+  justify-content: center;
+  border-radius: 50%;
   background: transparent;
-  color: var(--muted);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 6px 10px;
-  font-size: 14px;
-  line-height: 1;
+  border: none;
+  color: #fff;
+  font-size: 15px;
+  cursor: pointer;
 }
 
-.theme-toggle:hover {
-  background: var(--row-hover);
+.dark-toggle:hover {
+  background: var(--nav-hover);
+  border: none;
+}
+
+/* Row 2: nav bar (sticky, centered group) */
+.nav-bar {
+  background: var(--header-bg);
+  border-top: 1px solid var(--header-border);
+  padding: 3px 10px;
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+body.dark-mode .nav-bar {
+  border-bottom: 1px solid var(--border);
+}
+
+.nav-item {
+  color: #fff;
+  text-decoration: none;
+  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+body.dark-mode .nav-item {
+  color: var(--muted);
+}
+
+.nav-item:hover {
+  background: var(--nav-hover);
+}
+
+.nav-item.active {
+  background: var(--nav-active-bg);
+  color: var(--nav-active-text);
+  font-weight: 600;
+}
+
+body.dark-mode .nav-item:hover {
   color: var(--text);
 }
 
 main {
-  padding: 16px;
+  padding: 24px 20px 60px;
   max-width: 1100px;
   margin: 0 auto;
 }
@@ -176,10 +224,9 @@ main {
 }
 
 h2 {
-  font-size: 15px;
+  font-size: 17px;
   margin: 0 0 12px;
   font-weight: 700;
-  letter-spacing: -0.01em;
 }
 
 h2 + form.filters,
@@ -206,7 +253,7 @@ form.filters label {
 input, select, button {
   font-size: 14px;
   padding: 8px 10px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--input-border);
   border-radius: var(--radius-sm);
   background: var(--input-bg);
   color: var(--text);
@@ -222,11 +269,11 @@ input:focus, select:focus, button:focus-visible {
 
 button {
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-text);
   border: 1px solid var(--accent);
   cursor: pointer;
   padding: 9px 16px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 button:hover {
@@ -239,15 +286,16 @@ button:active {
 }
 
 button.secondary {
-  background: transparent;
-  color: var(--accent);
-  border: 1px solid var(--border);
+  background: var(--panel-bg);
+  color: var(--text);
+  border: 1px solid var(--input-border);
+  font-weight: 600;
 }
 
 button.secondary:hover {
   background: var(--accent-soft-bg);
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--text);
 }
 
 a.button {
@@ -270,9 +318,7 @@ th, td {
 th {
   color: var(--muted);
   font-weight: 600;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-size: 13px;
 }
 
 tbody tr:last-child td {
@@ -299,7 +345,7 @@ tr.session-row:hover {
   align-items: center;
   gap: 5px;
   padding: 3px 10px;
-  border-radius: 999px;
+  border-radius: 15px;
   font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
@@ -322,8 +368,8 @@ tr.session-row:hover {
 .badge.unknown { background: var(--aborted-bg); color: var(--muted); }
 
 .badge.running {
-  background: var(--live);
-  color: #fff;
+  background: var(--live-bg);
+  color: var(--live);
 }
 .badge.running::before {
   animation: pulse 1.4s infinite;

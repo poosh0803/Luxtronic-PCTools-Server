@@ -177,7 +177,7 @@ public/                  Static dashboard (plain HTML/CSS/JS, no build step)
   session.html              Session detail: live/historical chart per test_run, PDF export link,
                                force-stop/end controls
   technicians.html          List/create/revoke technicians, one-time API key reveal on creation
-  js/app.js, js/session.js, js/technicians.js, js/theme.js  (theme.js: light/dark toggle, opt-in only)
+  js/app.js, js/session.js, js/technicians.js, js/theme.js  (theme.js: light/dark toggle via body.dark-mode, opt-in only; styled per LUXTRONIC-DESIGN-GUIDELINES.md)
   css/style.css
   vendor/chart.umd.min.js  Vendored Chart.js (no CDN dependency)
 test/                    node:test unit tests (71 tests -- see "Run the unit tests" above)

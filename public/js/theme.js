@@ -1,41 +1,49 @@
 'use strict';
 
-// Wires up the #theme-toggle button on both dashboard pages. Dark mode is only ever applied
-// because the button was clicked (or because localStorage remembers a previous click) -- it is
-// never inferred from the OS/browser's prefers-color-scheme, which used to be how this worked
-// and surprised someone whose system was set to dark. The actual `data-theme` attribute is set
-// by a small inline script in each page's <head>, before this file loads, so there's no flash of
-// the wrong theme on page load; this file only syncs the button's icon and handles clicks.
+// Dark mode per LUXTRONIC-DESIGN-GUIDELINES.md section 4: a `dark-mode` class on <body>,
+// persisted in localStorage under "theme" ("dark"/"light"). Opt-in via the toggle only, never
+// inferred from prefers-color-scheme. The class is first applied by a tiny inline script right
+// after <body> opens (so there's no flash); this file syncs the icon and handles clicks.
 //
 // window.onThemeChange is an optional hook a page can define (session.js uses it to rebuild its
-// Chart.js charts, which bake theme-dependent colors in at construction time and don't pick up
-// new Chart.defaults on their own) -- called on every *user-initiated* toggle, not on page load.
+// Chart.js charts, which bake theme-dependent colors in at construction time) -- called on every
+// user-initiated toggle, not on page load.
 
-const THEME_STORAGE_KEY = 'luxtronic-theme';
+const THEME_STORAGE_KEY = 'theme';
 
-function currentTheme() {
-  return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+function isDark() {
+  return document.body.classList.contains('dark-mode');
 }
 
-function updateToggleButton(theme) {
-  const btn = document.getElementById('theme-toggle');
-  if (!btn) return;
-  btn.textContent = theme === 'dark' ? '☀️ Light' : '🌙 Dark';
-  btn.setAttribute('aria-label', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+function updateThemeIcon() {
+  const icon = document.getElementById('themeIcon');
+  if (!icon) return;
+  icon.classList.toggle('fa-sun', isDark());
+  icon.classList.toggle('fa-moon', !isDark());
 }
 
-function applyTheme(theme, notify) {
-  document.documentElement.setAttribute('data-theme', theme);
-  localStorage.setItem(THEME_STORAGE_KEY, theme);
-  updateToggleButton(theme);
-  if (notify && typeof window.onThemeChange === 'function') {
-    window.onThemeChange(theme);
-  }
+function highlightNav() {
+  // session.html is a child of the Sessions list, so keep that tab lit there.
+  let path = window.location.pathname;
+  if (path === '/' || path.endsWith('/session.html')) path = '/index.html';
+  document.querySelectorAll('.nav-bar .nav-item').forEach((a) => {
+    a.classList.toggle('active', a.getAttribute('href') === path);
+  });
 }
 
-// Sync the button to whatever the head script already applied -- no notify, this isn't a change.
-updateToggleButton(currentTheme());
+function initDarkMode() {
+  updateThemeIcon();
+  document.getElementById('darkModeToggle')?.addEventListener('click', () => {
+    document.body.classList.toggle('dark-mode');
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, isDark() ? 'dark' : 'light');
+    } catch (e) { /* storage blocked: toggle still works for this page view */ }
+    updateThemeIcon();
+    if (typeof window.onThemeChange === 'function') window.onThemeChange(isDark() ? 'dark' : 'light');
+  });
+}
 
-document.getElementById('theme-toggle')?.addEventListener('click', () => {
-  applyTheme(currentTheme() === 'dark' ? 'light' : 'dark', true);
+document.addEventListener('DOMContentLoaded', () => {
+  highlightNav();
+  initDarkMode();
 });

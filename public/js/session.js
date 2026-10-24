@@ -19,7 +19,7 @@ const SERIES_COLORS = ['#e5484d', '#3b82f6', '#22c55e', '#a855f7', '#f59e0b', '#
 // already-rendered chart baked its colors in at construction time, so theme.js's
 // window.onThemeChange hook below also rebuilds them from scratch on an actual toggle.
 function applyChartTheme() {
-  const styles = getComputedStyle(document.documentElement);
+  const styles = getComputedStyle(document.body);
   const muted = styles.getPropertyValue('--muted').trim();
   const border = styles.getPropertyValue('--border').trim();
   if (window.Chart) {
