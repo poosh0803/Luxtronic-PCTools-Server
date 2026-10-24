@@ -87,11 +87,26 @@ function renderSystemInfo(session) {
     return;
   }
   el.style.display = '';
-  el.innerHTML = `<h2>System specification</h2><div class="stats-grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr))">${sections
-    .map((section) => `<div class="stat-tile" style="text-align:left"><div class="label">${escapeHtml(section.title)}</div>${section.rows
-      .map(([label, value]) => `<div style="font-size:13px;margin-top:3px"><span class="muted">${escapeHtml(label)}:</span> ${escapeHtml(value)}</div>`)
+  el.innerHTML = `<h2>System specification</h2><div class="spec-grid">${sections
+    .map((section) => `<div class="spec-card"><h4>${escapeHtml(section.title)}</h4>${section.rows
+      .map(([label, value]) => `<div class="spec-row"><span class="k">${escapeHtml(label)}</span><span class="v">${escapeHtml(value)}</span></div>`)
       .join('')}</div>`)
     .join('')}</div>`;
+}
+
+function sessionBadge(session) {
+  const runs = session.test_runs || [];
+  if (!session.ended_at || runs.some((tr) => !tr.ended_at)) return '<span class="badge running">in progress</span>';
+  if (runs.some((tr) => tr.result === 'fail')) return '<span class="badge fail">fail</span>';
+  if (runs.some((tr) => tr.result === 'flagged')) return '<span class="badge flagged">flagged</span>';
+  return '<span class="badge pass">completed</span>';
+}
+
+function fmtSpan(startIso, endIso) {
+  const sec = Math.max(0, Math.round((new Date(endIso) - new Date(startIso)) / 1000));
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  return h > 0 ? `${h}h ${m}m` : m > 0 ? `${m}m ${sec % 60}s` : `${sec}s`;
 }
 
 function renderSessionMeta(session) {
@@ -104,20 +119,29 @@ function renderSessionMeta(session) {
   // sent a spec, so repeating them here is noise. Sessions without one (older clients) still show
   // them, since otherwise nothing identifies the PC.
   const hasSpec = (session.system_summary || []).length > 0;
-  const serialRows = hasSpec ? '' : `
-      <dt>PC serial</dt><dd>${session.mobo_serial}</dd>
-      <dt>SSD serials</dt><dd>${ssd}</dd>
-      <dt>Other serials</dt><dd>${other}</dd>`;
+  const fact = (label, value, cls = '') => `<div class="fact ${cls}"><div class="label">${label}</div><div class="value">${value}</div></div>`;
+  const ended = session.ended_at
+    ? `${fmtDateTime(session.ended_at)} <span class="muted">(${fmtSpan(session.started_at, session.ended_at)})</span>`
+    : '<span class="muted">still running</span>';
   el.innerHTML = `
-    <h2>Session ${session.id}</h2>
-    <dl>
-      <dt>Customer</dt><dd>${session.customer_name || '-'}</dd>
-      <dt>Type</dt><dd>${session.session_type}</dd>
-      <dt>Technician</dt><dd>${session.technician_name}</dd>
-      <dt>Started</dt><dd>${fmtDateTime(session.started_at)}</dd>
-      <dt>Ended</dt><dd>${session.ended_at ? fmtDateTime(session.ended_at) : '<span class="badge running">in progress</span>'}</dd>
-      <dt>Notes</dt><dd>${session.notes || '-'}</dd>${serialRows}
-    </dl>
+    <div class="hero-top">
+      <div>
+        <h2>Session</h2>
+        <div class="muted mono">${escapeHtml(session.id)}</div>
+      </div>
+      ${sessionBadge(session)}
+    </div>
+    <div class="facts">
+      ${fact('Customer', escapeHtml(session.customer_name || '-'))}
+      ${fact('Type', `<span class="pill">${escapeHtml(String(session.session_type).replace('_', ' '))}</span>`)}
+      ${fact('Technician', escapeHtml(session.technician_name || '-'))}
+      ${fact('Started', fmtDateTime(session.started_at))}
+      ${fact('Ended', ended)}
+      ${hasSpec ? '' : fact('PC serial', escapeHtml(session.mobo_serial), 'mono')}
+      ${hasSpec ? '' : fact('SSD serials', escapeHtml(ssd), 'mono')}
+      ${hasSpec ? '' : fact('Other serials', escapeHtml(other))}
+      ${fact('Notes', escapeHtml(session.notes || '-'), 'wide')}
+    </div>
   `;
 }
 
@@ -377,19 +401,28 @@ function runSettingsText(snapshot) {
   return parts.length ? `Run settings: ${parts.join(', ')}` : '';
 }
 
+const COMPONENT_ICONS = {
+  cpu: 'fa-microchip',
+  gpu: 'fa-desktop',
+  vram: 'fa-memory',
+  ram: 'fa-memory',
+  ssd: 'fa-hdd',
+};
+
 function renderTestRunPanel(testRun, historicalTelemetry) {
   const panel = document.createElement('div');
   panel.className = 'test-run';
   panel.dataset.testRunId = testRun.id;
   panel.innerHTML = `
     <div class="test-run-header">
-      <h3>${testRun.component}</h3>
+      <h3><i class="fas ${COMPONENT_ICONS[testRun.component] || 'fa-vial'}"></i>${testRun.component.toUpperCase()}</h3>
       ${resultBadgeHtml(testRun)}
     </div>
-    <div class="muted" style="font-size:13px; margin-bottom:6px;">
-      Started ${fmtDateTime(testRun.started_at)}${testRun.ended_at ? ` &middot; Ended ${fmtDateTime(testRun.ended_at)}` : ''}
-      ${testRun.stop_reason ? ` &middot; Stopped: ${testRun.stop_reason}` : ''}
-      ${runSettingsText(testRun.config_snapshot) ? ` &middot; ${runSettingsText(testRun.config_snapshot)}` : ''}
+    <div class="run-meta muted">
+      <span>Started ${fmtDateTime(testRun.started_at)}</span>
+      ${testRun.ended_at ? `<span>Ended ${fmtDateTime(testRun.ended_at)} (${fmtSpan(testRun.started_at, testRun.ended_at)})</span>` : ''}
+      ${testRun.stop_reason ? `<span>Stopped: ${escapeHtml(testRun.stop_reason)}</span>` : ''}
+      ${runSettingsText(testRun.config_snapshot) ? `<span>${escapeHtml(runSettingsText(testRun.config_snapshot))}</span>` : ''}
     </div>
     <div class="chart-wrap"><canvas></canvas></div>
     <div class="readout-container"></div>

@@ -21,14 +21,24 @@ function fmtDateTime(iso) {
   });
 }
 
+const COMPONENT_ICONS = {
+  cpu: 'fa-microchip',
+  gpu: 'fa-desktop',
+  vram: 'fa-memory',
+  ram: 'fa-memory',
+  ssd: 'fa-hdd',
+};
+
 function renderTestRuns(testRuns) {
   if (!testRuns || testRuns.length === 0) return '<span class="muted">none</span>';
-  return testRuns
+  return `<div class="chips">${testRuns
     .map((tr) => {
       const running = !tr.ended_at;
-      return `<div>${tr.component} ${resultBadge(tr.result, running)}</div>`;
+      const state = running ? 'running' : tr.result || 'unknown';
+      const icon = COMPONENT_ICONS[tr.component] || 'fa-vial';
+      return `<span class="chip ${state}" title="${tr.component}: ${running ? 'running' : tr.result || 'unknown'}"><i class="fas ${icon}"></i>${tr.component.toUpperCase()}</span>`;
     })
-    .join('');
+    .join('')}</div>`;
 }
 
 function sessionStatus(session) {
@@ -66,9 +76,9 @@ async function loadSessions(params) {
         (s) => `
         <tr class="session-row" data-id="${s.id}">
           <td>${fmtDateTime(s.started_at)}</td>
-          <td>${s.mobo_serial}</td>
-          <td>${s.customer_name || '<span class="muted">-</span>'}</td>
-          <td>${s.session_type}</td>
+          <td class="cell-mono">${s.mobo_serial}</td>
+          <td class="cell-strong">${s.customer_name || '<span class="muted">-</span>'}</td>
+          <td><span class="pill">${String(s.session_type).replace('_', ' ')}</span></td>
           <td>${s.technician_name}</td>
           <td>${renderTestRuns(s.test_runs)}</td>
           <td>${sessionStatus(s)}</td>

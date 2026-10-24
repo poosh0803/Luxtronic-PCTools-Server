@@ -113,8 +113,8 @@ header.topbar {
 }
 
 .brand-mark {
-  width: 36px;
-  height: 36px;
+  width: 30px;
+  height: 30px;
   border-radius: 6px;
   background: #fff;
   color: var(--brand-dark);
@@ -130,7 +130,7 @@ header.topbar {
 .brand-mark img {
   width: 100%;
   height: 100%;
-  padding: 3px;
+  padding: 2px;
   box-sizing: border-box;
   object-fit: contain;
 }
@@ -572,4 +572,164 @@ tr.session-row:hover {
     grid-template-columns: 100px 1fr;
     font-size: 13px;
   }
+}
+
+/* ---------------------------------------------------------------- component polish
+   Additions only: nothing above (header/nav sizes, 1100px content width, 14px body, 17px h2,
+   8px cards, 4px buttons, 15px badges) is changed, per LUXTRONIC-DESIGN-GUIDELINES.md. */
+
+/* Sessions list: one pill per test instead of a stacked text list. */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 10px 2px 8px;
+  border-radius: 15px;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--aborted-bg);
+  color: var(--aborted);
+}
+
+.chip i { font-size: 11px; }
+.chip.pass { background: var(--pass-bg); color: var(--pass); }
+.chip.fail { background: var(--fail-bg); color: var(--fail); }
+.chip.flagged { background: var(--flagged-bg); color: var(--flagged); }
+.chip.aborted { background: var(--aborted-bg); color: var(--aborted); }
+.chip.running { background: var(--live-bg); color: var(--live); }
+
+td.cell-strong { font-weight: 600; }
+td.cell-mono, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
+
+.pill {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 15px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--accent-soft-bg);
+  color: var(--text);
+  text-transform: capitalize;
+}
+
+/* Session header card: title + status on one line, key facts in a grid below. */
+.hero-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.hero-top h2 { margin: 0 0 2px; }
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 14px 20px;
+}
+
+.fact .label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.fact .value { font-weight: 600; overflow-wrap: anywhere; }
+.fact.wide { grid-column: 1 / -1; }
+.fact.wide .value { font-weight: 400; }
+
+/* System specification boxes. Column flow (masonry-like) rather than a grid: the boxes have very
+   different heights (a drive lists ten rows, the OS three) and a grid leaves gaps under the short ones. */
+.spec-grid {
+  columns: 3 260px;
+  column-gap: 12px;
+}
+
+.spec-card {
+  background: var(--stat-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px 8px;
+  margin-bottom: 12px;
+  break-inside: avoid;
+}
+
+.spec-card h4 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--brand-dark);
+}
+
+body.dark-mode .spec-card h4 { color: var(--accent); }
+
+.spec-row {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 8px;
+  padding: 4px 0;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.spec-row:first-of-type { border-top: none; }
+.spec-row .k { color: var(--muted); }
+.spec-row .v { font-weight: 600; overflow-wrap: anywhere; }
+
+/* Test-run panels */
+.test-run {
+  border: none;
+  padding: 0;
+  margin-bottom: 0;
+}
+
+.test-run-header {
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.test-run-header h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  letter-spacing: 0.03em;
+  color: var(--text);
+}
+
+.test-run-header h3 i {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--accent-soft-bg);
+  color: var(--brand-dark);
+  font-size: 13px;
+}
+
+body.dark-mode .test-run-header h3 i { color: var(--accent); }
+
+.run-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 16px;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+@media (max-width: 700px) {
+  .spec-grid { columns: 1; }
 }
