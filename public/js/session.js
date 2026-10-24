@@ -73,6 +73,27 @@ async function fetchJson(url) {
   return res.json();
 }
 
+// PC specification sent by the client (sessions.system_info), as formatted by the server
+// (system_summary: [{title, rows: [[label, value]]}]). Hidden when the client sent none.
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function renderSystemInfo(session) {
+  const el = document.getElementById('system-info');
+  const sections = session.system_summary || [];
+  if (sections.length === 0) {
+    el.style.display = 'none';
+    return;
+  }
+  el.style.display = '';
+  el.innerHTML = `<h2>System specification</h2><div class="stats-grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr))">${sections
+    .map((section) => `<div class="stat-tile" style="text-align:left"><div class="label">${escapeHtml(section.title)}</div>${section.rows
+      .map(([label, value]) => `<div style="font-size:13px;margin-top:3px"><span class="muted">${escapeHtml(label)}:</span> ${escapeHtml(value)}</div>`)
+      .join('')}</div>`)
+    .join('')}</div>`;
+}
+
 function renderSessionMeta(session) {
   const el = document.getElementById('session-meta');
   const ssd = (session.ssd_serials || []).join(', ') || '-';
@@ -455,6 +476,7 @@ function loadSession() {
       const session = await fetchJson(`/api/sessions/${sessionId}`);
       currentSession = session;
       renderSessionMeta(session);
+      renderSystemInfo(session);
       updateStopSessionButton(session);
       await renderAllTestRuns(session);
     } catch (err) {

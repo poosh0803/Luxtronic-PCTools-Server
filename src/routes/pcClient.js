@@ -20,6 +20,7 @@ const {
   isValidStopReason,
   isValidUuid,
 } = require('../lib/validation');
+const { isValidSystemInfo } = require('../lib/systemInfo');
 const testRunCache = require('../lib/testRunCache');
 const hub = require('../ws/hub');
 
@@ -41,7 +42,7 @@ router.get('/api/config', (req, res) => {
 
 // POST /api/sessions
 router.post('/api/sessions', requireApiKey(), async (req, res, next) => {
-  const { mobo_serial, customer_name, session_type, notes, ssd_serials, other_serials } =
+  const { mobo_serial, customer_name, session_type, notes, ssd_serials, other_serials, system_info } =
     req.body || {};
 
   if (!isNonEmptyString(mobo_serial)) {
@@ -61,6 +62,12 @@ router.post('/api/sessions', requireApiKey(), async (req, res, next) => {
       .json({ error: 'invalid_request', message: 'other_serials must be an object' });
   }
 
+  if (!isValidSystemInfo(system_info)) {
+    return res
+      .status(400)
+      .json({ error: 'invalid_request', message: 'system_info must be an object under 64KB' });
+  }
+
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -71,8 +78,8 @@ router.post('/api/sessions', requireApiKey(), async (req, res, next) => {
     );
     const { rows } = await client.query(
       `INSERT INTO sessions
-         (mobo_serial, technician_id, customer_name, session_type, notes, ssd_serials, other_serials)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+         (mobo_serial, technician_id, customer_name, session_type, notes, ssd_serials, other_serials, system_info)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING id`,
       [
         mobo_serial,
@@ -82,6 +89,7 @@ router.post('/api/sessions', requireApiKey(), async (req, res, next) => {
         notes ?? null,
         JSON.stringify(ssd_serials ?? []),
         JSON.stringify(other_serials ?? {}),
+        system_info ? JSON.stringify(system_info) : null,
       ]
     );
     await client.query('COMMIT');

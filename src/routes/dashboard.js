@@ -4,6 +4,7 @@
 
 const express = require('express');
 const pool = require('../../db/pool');
+const { describeSystemInfo } = require('../lib/systemInfo');
 const { isValidUuid, isNonEmptyString } = require('../lib/validation');
 const { generateSessionReportPdf } = require('../lib/pdf');
 const testRunCache = require('../lib/testRunCache');
@@ -220,7 +221,12 @@ router.get('/api/sessions/:id', async (req, res, next) => {
       'SELECT * FROM test_runs WHERE session_id = $1 ORDER BY started_at',
       [sessionId]
     );
-    res.json({ ...sessionRes.rows[0], test_runs: testRunsRes.rows });
+    res.json({
+      ...sessionRes.rows[0],
+      test_runs: testRunsRes.rows,
+      // Readable sections of system_info, formatted once here so the page and the PDF agree.
+      system_summary: describeSystemInfo(sessionRes.rows[0].system_info),
+    });
   } catch (err) {
     next(err);
   }

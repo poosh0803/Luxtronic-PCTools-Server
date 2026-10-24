@@ -336,6 +336,10 @@ The rebuilt client (Luxtronic-PCTools-Client) added a few things this server now
   from its own Settings and reports what it actually used as `run_settings` on the test-run completion;
   the server merges it into `config_snapshot`, and the session page shows it ("Run settings: 10 min, mode
   blend, AVX off"). Thresholds still come from this server's config.
+- **PC specification**: the client sends `system_info` (CPU, GPU, memory modules, motherboard + BIOS, drives, OS)
+  when it creates a session; `migrations/003_session_system_info.sql` adds the column, the session page shows
+  it in a "System specification" panel and the PDF report opens with a "System specification" section (both
+  built from `src/lib/systemInfo.js`). Sessions from older clients simply have none.
 - Single-test tabs and the client's Offline mode never contact the server, so there's nothing to handle.
 
 **Deploying to the LAN box** (not done from here): pull, then `npm run migrate` (applies 002) and

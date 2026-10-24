@@ -11,6 +11,7 @@
 // Chart.js rendering.
 
 const PDFDocument = require('pdfkit');
+const { describeSystemInfo } = require('./systemInfo');
 
 const PAGE_MARGIN = 40;
 const CHART_HEIGHT = 160;
@@ -214,6 +215,37 @@ function drawSummaryTable(doc, x, y, width, rows) {
   return curY;
 }
 
+/**
+ * "System specification" block: what machine this report is about (CPU, graphics, memory modules,
+ * motherboard, drives, OS) in plain labelled rows, so the customer can read the spec next to the
+ * results. Nothing is drawn for a session whose client didn't send it.
+ */
+function drawSystemSpec(doc, systemInfo) {
+  const sections = describeSystemInfo(systemInfo);
+  if (sections.length === 0) return;
+
+  doc.font('Helvetica-Bold').fontSize(13).fillColor('#000').text('System specification');
+  doc.moveDown(0.3);
+  const labelWidth = 130;
+  const valueWidth = doc.page.width - PAGE_MARGIN * 2 - labelWidth;
+
+  for (const section of sections) {
+    if (doc.y > doc.page.height - PAGE_MARGIN - 90) doc.addPage();
+    doc.font('Helvetica-Bold').fontSize(10).fillColor('#b36b00').text(section.title, PAGE_MARGIN, doc.y);
+    doc.font('Helvetica').fontSize(9);
+    for (const [label, value] of section.rows) {
+      if (doc.y > doc.page.height - PAGE_MARGIN - 20) doc.addPage();
+      const y = doc.y;
+      doc.fillColor('#555').text(label, PAGE_MARGIN, y, { width: labelWidth });
+      const labelBottom = doc.y;
+      doc.fillColor('#000').text(value, PAGE_MARGIN + labelWidth, y, { width: valueWidth });
+      doc.y = Math.max(labelBottom, doc.y);
+    }
+    doc.x = PAGE_MARGIN; // the last value was drawn at the value column; later text starts at the margin
+    doc.moveDown(0.4);
+  }
+}
+
 function resultLabel(run) {
   if (!run.result) return run.ended_at ? 'unknown' : 'in progress';
   return run.result;
@@ -252,6 +284,8 @@ function generateSessionReportPdf({ session, testRuns, telemetryByRun }) {
     doc.font('Helvetica-Bold').text(`${label}: `, { continued: true }).font('Helvetica').text(String(value));
   }
 
+  doc.moveDown(0.8);
+  drawSystemSpec(doc, session.system_info);
   doc.moveDown(1);
 
   if (testRuns.length === 0) {
