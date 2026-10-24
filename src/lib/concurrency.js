@@ -15,6 +15,7 @@
 // the prose rule -- deliberately not "cleverer" or more general than what's written.
 
 const EXCLUSIVE_COMPONENTS = new Set(['ram', 'ssd']);
+const GPU_GROUP = new Set(['gpu', 'vram']);
 
 /**
  * @param {string[]} activeComponents - components of currently-active (ended_at IS NULL)
@@ -30,10 +31,18 @@ function checkConcurrency(activeComponents, requestedComponent) {
     return { ok: true };
   }
 
-  // requestedComponent is cpu or gpu (or any future non-exclusive component).
+  // requestedComponent is cpu, gpu or vram (or any future non-exclusive component).
   const blockingExclusive = activeComponents.find((c) => EXCLUSIVE_COMPONENTS.has(c));
   if (blockingExclusive) {
     return { ok: false, active_component: blockingExclusive };
+  }
+  // gpu and vram both hammer the same graphics card (FurMark vs memtest_vulkan), so they may not
+  // overlap each other -- added with the vram component, not in the original section 6 text.
+  if (GPU_GROUP.has(requestedComponent)) {
+    const blockingGpu = activeComponents.find((c) => GPU_GROUP.has(c));
+    if (blockingGpu) {
+      return { ok: false, active_component: blockingGpu };
+    }
   }
   if (activeComponents.includes(requestedComponent)) {
     return { ok: false, active_component: requestedComponent };

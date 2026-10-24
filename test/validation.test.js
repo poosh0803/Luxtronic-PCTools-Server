@@ -27,8 +27,8 @@ test('isNonEmptyString: invalid cases', () => {
   }
 });
 
-test('isValidComponent: accepts exactly cpu/gpu/ram/ssd', () => {
-  for (const v of ['cpu', 'gpu', 'ram', 'ssd']) {
+test('isValidComponent: accepts exactly cpu/gpu/vram/ram/ssd', () => {
+  for (const v of ['cpu', 'gpu', 'vram', 'ram', 'ssd']) {
     assert.equal(isValidComponent(v), true, `expected ${v} to be valid`);
   }
 });

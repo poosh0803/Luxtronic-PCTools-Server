@@ -329,6 +329,19 @@ function updateStopSessionButton(session) {
   btn.textContent = anyRunning ? 'Stop running test(s)' : 'End session';
 }
 
+// What the client actually ran with (its own Settings override the server config's duration/mode),
+// merged into config_snapshot when the run completed (PATCH run_settings). Empty for runs from a
+// client that doesn't send it.
+function runSettingsText(snapshot) {
+  if (!snapshot) return '';
+  const parts = [];
+  if (typeof snapshot.duration_minutes === 'number') parts.push(`${snapshot.duration_minutes} min`);
+  if (snapshot.mode) parts.push(`mode ${snapshot.mode}`);
+  if (snapshot.avx_disabled === true) parts.push('AVX off');
+  if (typeof snapshot.device_index === 'number') parts.push(`GPU #${snapshot.device_index}`);
+  return parts.length ? `Run settings: ${parts.join(', ')}` : '';
+}
+
 function renderTestRunPanel(testRun, historicalTelemetry) {
   const panel = document.createElement('div');
   panel.className = 'test-run';
@@ -341,6 +354,7 @@ function renderTestRunPanel(testRun, historicalTelemetry) {
     <div class="muted" style="font-size:13px; margin-bottom:6px;">
       Started ${fmtDateTime(testRun.started_at)}${testRun.ended_at ? ` &middot; Ended ${fmtDateTime(testRun.ended_at)}` : ''}
       ${testRun.stop_reason ? ` &middot; Stopped: ${testRun.stop_reason}` : ''}
+      ${runSettingsText(testRun.config_snapshot) ? ` &middot; ${runSettingsText(testRun.config_snapshot)}` : ''}
     </div>
     <div class="chart-wrap"><canvas></canvas></div>
     <div class="readout-container"></div>

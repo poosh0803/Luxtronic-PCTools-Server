@@ -1,6 +1,6 @@
 'use strict';
 
-const COMPONENTS = ['cpu', 'gpu', 'ram', 'ssd'];
+const COMPONENTS = ['cpu', 'gpu', 'vram', 'ram', 'ssd'];
 const SESSION_TYPES = ['new_build', 'repair'];
 // manual_stop is distinct from the other three: those are set by the PC client describing why
 // *it* stopped: manual_stop is set by the server itself (dashboard.js's POST .../stop route)

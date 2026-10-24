@@ -123,7 +123,7 @@ ecosystem.config.js` against a real Postgres, confirmed the dashboard and auth b
 npm test
 ```
 
-71 tests (Node's built-in `node --test`, no framework dependency -- see
+83 tests (Node's built-in `node --test`, no framework dependency -- see
 `.claude/skills/unit-testing/SKILL.md` for the conventions this suite follows). Covers every
 pure/deterministic piece: the concurrency rule (CONTRACT.md section 6) and result computation
 (section 7, including the SSD ATA-vs-NVMe threshold split and the stop_reason/aborted and
@@ -138,7 +138,8 @@ instead.
 
 ```
 ecosystem.config.js   pm2 process definition (production/LAN deploy, see "Start the server" above)
-migrations/           Plain SQL migrations (001_init.sql = CONTRACT.md section 2 schema)
+migrations/           Plain SQL migrations (001_init.sql = CONTRACT.md section 2 schema;
+                        002_vram_component.sql adds the 'vram' component)
 db/
   pool.js              pg Pool, reads DATABASE_URL
   migrate.js           Minimal migration runner (tracks applied files in schema_migrations)
@@ -180,7 +181,7 @@ public/                  Static dashboard (plain HTML/CSS/JS, no build step)
   js/app.js, js/session.js, js/technicians.js, js/theme.js  (theme.js: light/dark toggle via body.dark-mode, opt-in only; styled per LUXTRONIC-DESIGN-GUIDELINES.md)
   css/style.css
   vendor/chart.umd.min.js  Vendored Chart.js (no CDN dependency)
-test/                    node:test unit tests (71 tests -- see "Run the unit tests" above)
+test/                    node:test unit tests (83 tests -- see "Run the unit tests" above)
 .claude/skills/unit-testing/  Project-scoped Claude Code skill documenting this suite's conventions
 ```
 
@@ -320,6 +321,25 @@ document:
    fast deterministic hash keeps the WebSocket upgrade auth path simple (needs a quick synchronous
    lookup before accepting the handshake). Worth a second look if that threat model assumption is
    wrong.
+
+## Aligned with the v2 client
+
+The rebuilt client (Luxtronic-PCTools-Client) added a few things this server now supports:
+
+- **`vram` component** (memtest_vulkan video-memory test): `migrations/002_vram_component.sql` extends the
+  `component` enum (Postgres 12+), validation accepts it, and `config/default.json` has a `vram` section
+  (`max_temp_c`; a missing section in an older config file is fine). `gpu` and `vram` may not run at the
+  same time (same graphics card), but either may run alongside `cpu` -- see `src/lib/concurrency.js`.
+- **Several tests per session**: the client's Run Tests page runs tests one after another in one session.
+  Nothing new was needed server-side (many test_runs per session was always supported).
+- **Client-chosen durations / CPU load level**: the client overrides `duration_minutes` and CPU `mode`
+  from its own Settings and reports what it actually used as `run_settings` on the test-run completion;
+  the server merges it into `config_snapshot`, and the session page shows it ("Run settings: 10 min, mode
+  blend, AVX off"). Thresholds still come from this server's config.
+- Single-test tabs and the client's Offline mode never contact the server, so there's nothing to handle.
+
+**Deploying to the LAN box** (not done from here): pull, then `npm run migrate` (applies 002) and
+`pm2 restart` the service. Until 002 is applied, a `vram` test run is rejected with a 500 from the enum.
 
 ## Explicitly not done in this pass (by design, per task scope)
 

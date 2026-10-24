@@ -178,7 +178,7 @@ router.post('/api/sessions/:id/test-runs', requireApiKey(), async (req, res, nex
 router.patch('/api/sessions/:id/test-runs/:test_run_id', requireApiKey(), async (req, res, next) => {
   const sessionId = req.params.id;
   const testRunId = req.params.test_run_id;
-  const { tool_exit_code, tool_output_raw, summary_stats, stop_reason } = req.body || {};
+  const { tool_exit_code, tool_output_raw, summary_stats, stop_reason, run_settings } = req.body || {};
 
   if (!isValidUuid(sessionId) || !isValidUuid(testRunId)) {
     return res.status(400).json({ error: 'invalid_request', message: 'invalid id' });
@@ -186,7 +186,7 @@ router.patch('/api/sessions/:id/test-runs/:test_run_id', requireApiKey(), async 
   if (stop_reason !== undefined && stop_reason !== null && !isValidStopReason(stop_reason)) {
     return res.status(400).json({
       error: 'invalid_request',
-      message: 'stop_reason must be one of user_abort, tool_crash, client_error',
+      message: 'stop_reason must be one of user_abort, tool_crash, client_error, manual_stop',
     });
   }
   if (tool_exit_code !== undefined && tool_exit_code !== null && typeof tool_exit_code !== 'number') {
@@ -198,6 +198,16 @@ router.patch('/api/sessions/:id/test-runs/:test_run_id', requireApiKey(), async 
     (typeof summary_stats !== 'object' || Array.isArray(summary_stats))
   ) {
     return res.status(400).json({ error: 'invalid_request', message: 'summary_stats must be an object' });
+  }
+
+  if (
+    run_settings !== undefined &&
+    run_settings !== null &&
+    (typeof run_settings !== 'object' || Array.isArray(run_settings) || JSON.stringify(run_settings).length > 4096)
+  ) {
+    return res
+      .status(400)
+      .json({ error: 'invalid_request', message: 'run_settings must be an object under 4KB' });
   }
 
   const client = await pool.connect();
@@ -230,7 +240,8 @@ router.patch('/api/sessions/:id/test-runs/:test_run_id', requireApiKey(), async 
            tool_output_raw = $2,
            summary_stats = $3,
            result = $4,
-           stop_reason = $5
+           stop_reason = $5,
+           config_snapshot = config_snapshot || $7::jsonb
        WHERE id = $6`,
       [
         tool_exit_code ?? null,
@@ -239,6 +250,9 @@ router.patch('/api/sessions/:id/test-runs/:test_run_id', requireApiKey(), async 
         result,
         stop_reason ?? null,
         testRunId,
+        // What the client actually ran with (its own duration / load level override the server
+        // config's) -- merged over the frozen config_snapshot so the record isn't misleading.
+        JSON.stringify(run_settings ?? {}),
       ]
     );
 

@@ -10,6 +10,7 @@ const { computeResult } = require('../src/lib/resultComputation');
 const config = {
   cpu: { tool: 'prime95', mode: 'blend', duration_minutes: 60, max_temp_c: 95 },
   gpu: { tool: 'furmark', duration_minutes: 20, max_temp_c: 90 },
+  vram: { tool: 'memtest_vulkan', max_temp_c: 90 },
   ram: { tool: 'tm5', config_profile: 'anta777-extreme', duration_minutes: 60, max_errors: 0 },
   ssd: {
     tool: 'crystaldiskmark',
@@ -184,4 +185,24 @@ test('normal finish, min_seq_read_mb_s exactly at the minimum -> flagged, not fa
     null
   );
   assert.equal(r.result, 'flagged');
+});
+
+test('vram: any error_count > 0 fails (memtest_vulkan found corrupted video memory)', () => {
+  const r = computeResult('vram', config, { error_count: 3, max_temp_c: 60 }, null);
+  assert.equal(r.result, 'fail');
+});
+
+test('vram: clean run under the temperature limit passes', () => {
+  assert.equal(computeResult('vram', config, { error_count: 0, max_temp_c: 60 }, null).result, 'pass');
+});
+
+test('vram: temperature over the vram max_temp_c fails, near it flags', () => {
+  assert.equal(computeResult('vram', config, { error_count: 0, max_temp_c: 95 }, null).result, 'fail');
+  assert.equal(computeResult('vram', config, { error_count: 0, max_temp_c: 88 }, null).result, 'flagged');
+});
+
+test('vram with no vram section in an older config file -> no thresholds, still judged on error_count', () => {
+  const { vram, ...older } = config;
+  assert.equal(computeResult('vram', older, { error_count: 0, max_temp_c: 99 }, null).result, 'pass');
+  assert.equal(computeResult('vram', older, { error_count: 1 }, null).result, 'fail');
 });

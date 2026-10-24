@@ -41,7 +41,7 @@ CREATE TABLE sessions (
   ended_at        TIMESTAMPTZ
 );
 
-CREATE TYPE component AS ENUM ('cpu', 'gpu', 'ram', 'ssd');
+CREATE TYPE component AS ENUM ('cpu', 'gpu', 'ram', 'ssd');   -- 'vram' added by migrations/002_vram_component.sql
 CREATE TYPE test_result AS ENUM ('pass', 'fail', 'flagged', 'aborted');
 
 CREATE TABLE test_runs (
@@ -87,6 +87,10 @@ A JSON file on the server (v1 — no admin UI, per plan). Client fetches the rel
     "duration_minutes": 20,
     "max_temp_c": 90
   },
+  "vram": {                         // added with the VRAM test (memtest_vulkan); optional in the file
+    "tool": "memtest_vulkan",
+    "max_temp_c": 90
+  },
   "ram": {
     "tool": "tm5",
     "config_profile": "anta777-extreme",
@@ -110,6 +114,8 @@ A JSON file on the server (v1 — no admin UI, per plan). Client fetches the rel
 }
 ```
 
+**Durations, CPU mode and VRAM device are now chosen on the PC, not by this file.** The v2 client has its own Settings page: per-test run lengths (defaults 10 min CPU, 10 min GPU, 10 min VRAM, 30 min RAM), a CPU load level (Prime95 blend / small FFT / blend with AVX off) and the VRAM test's GPU number. It overrides `duration_minutes` and `mode` from this file when it fetches config, so those two keys are now only fallback defaults for older clients. Thresholds (`max_*` / `min_*`) are still read from here, by the server, when it computes `result`. The settings a run really used are sent with its completion as `run_settings` (§4) and merged into that run's `config_snapshot`, so the stored record shows the real duration instead of this file's. The `vram` section has no `duration_minutes`: the client never reads one.
+
 **SSD SMART fields are bus-type-specific, not universal.** ATA/SATA and NVMe drives expose entirely different SMART data under the *same* attribute IDs (ATA attribute 5 = "Reallocated Sectors Count", NVMe attribute 5 = "Percentage Used" — unrelated metrics, same number). A single drive is only ever one bus type, so the client should only populate whichever `summary_stats` keys apply to the drive under test — per §7, a config threshold with no matching `summary_stats` key is simply skipped, which is what makes it safe to list both bus types' thresholds here at once. This replaces an earlier version of this config (`smart_reallocated_sectors_max`, "max" as a *suffix*) that had a naming bug in the server's threshold-matching implementation making it silently never evaluate, ever — every threshold key here must *start with* `max_`/`min_` for the server to pick it up (see `resultComputation.js` for the exact matching rule).
 
 ## 4. REST endpoints
@@ -121,7 +127,7 @@ A JSON file on the server (v1 — no admin UI, per plan). Client fetches the rel
 | GET | `/api/config` | Fetch current thresholds/durations JSON (§3) |
 | POST | `/api/sessions` | Create a session. Body: `{ mobo_serial, customer_name?, session_type, notes?, ssd_serials?, other_serials? }` → `{ session_id }` |
 | POST | `/api/sessions/:id/test-runs` | Start a test run. Body: `{ component }` → `201 { test_run_id }`, or `409 { error: "exclusive_conflict", active_component }` if the concurrency rule (§6) rejects it |
-| PATCH | `/api/sessions/:id/test-runs/:test_run_id` | Complete a test run. Body: `{ tool_exit_code, tool_output_raw, summary_stats, stop_reason? }` → server computes and returns `{ result }` (§7) |
+| PATCH | `/api/sessions/:id/test-runs/:test_run_id` | Complete a test run. Body: `{ tool_exit_code, tool_output_raw, summary_stats, stop_reason?, run_settings? }` → server computes and returns `{ result }` (§7). `run_settings` is an optional object (under 4KB) of what the client actually ran with, e.g. `{ duration_minutes: 10, mode: "blend", avx_disabled: false }` for CPU, `{ duration_minutes, device_index }` for VRAM; it is merged over the run's `config_snapshot` (`config_snapshot \|\| run_settings`). Servers/clients that predate it simply ignore it / don't send it |
 | PATCH | `/api/sessions/:id` | End session. Body: `{}` → sets `ended_at`; also auto-closes (§7) any test_run still open in this session |
 
 ### Dashboard (no auth)
@@ -166,13 +172,16 @@ Server pushes, for the lifetime of the connection:
 Given the active (`ended_at IS NULL`) test_runs already in this session:
 
 - Requested component is `ram` or `ssd` → reject (`409`) if **any** active test_run exists.
-- Requested component is `cpu` or `gpu` → reject (`409`) if any active test_run is `ram` or `ssd`, or if a test_run for that same component is already active. Otherwise allowed (so `cpu` then `gpu` while `cpu` is still running is valid — that's the "together" mode).
+- Requested component is `cpu`, `gpu` or `vram` → reject (`409`) if any active test_run is `ram` or `ssd`, or if a test_run for that same component is already active. Otherwise allowed (so `cpu` then `gpu` while `cpu` is still running is valid — that's the "together" mode).
+- `gpu` and `vram` additionally reject each other: both load the same graphics card (FurMark vs memtest_vulkan), so they may run alongside `cpu` but never at the same time as one another.
+
+The v2 client runs several tests **one after another inside a single session** (the Run Tests page): one `POST /api/sessions`, then for each test a `POST .../test-runs` → run → `PATCH .../test-runs/:id`, then one `PATCH /api/sessions/:id` at the end. Each test finishes before the next starts, so this never trips §6. Its per-test tabs run locally and send nothing at all.
 
 This is the one piece of business logic that must match exactly between what the client expects and what the server enforces — implementers on both tracks should treat §6 as canonical, not re-derive it.
 
 ## 7. Result computation (server-side, on test-run completion)
 
-Client submits raw `tool_exit_code`, `tool_output_raw`, and `summary_stats` (pre-parsed key metrics — max temp, error count, throughput, etc; exact keys per component are the parsing wrapper's responsibility on the client side), plus an optional `stop_reason`.
+Client submits raw `tool_exit_code`, `tool_output_raw`, and `summary_stats` (pre-parsed key metrics — max temp, error count, throughput, etc; exact keys per component are the parsing wrapper's responsibility on the client side), plus an optional `stop_reason`. For `vram` the client reports `error_count` (each "Error found" report from memtest_vulkan) and `max_temp_c` (GPU core temperature); telemetry uses the same `gpu_*` sensor names as the GPU test.
 
 **If `stop_reason` is absent/null** — this was a normal finish. Server compares `summary_stats` against the matching §3 config subtree:
 

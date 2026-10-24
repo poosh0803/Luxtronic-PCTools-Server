@@ -10,6 +10,10 @@
     "duration_minutes": 10,
     "max_temp_c": 90
   },
+  "vram": {
+    "tool": "memtest_vulkan",
+    "max_temp_c": 90
+  },
   "ram": {
     "tool": "tm5",
     "config_profile": "anta777-extreme",

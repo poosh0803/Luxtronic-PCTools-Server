@@ -47,3 +47,35 @@ test('gpu requested while ssd is active -> rejected', () => {
 test('cpu requested while both cpu and gpu already active -> rejected on the matching component', () => {
   assert.deepEqual(checkConcurrency(['cpu', 'gpu'], 'cpu'), { ok: false, active_component: 'cpu' });
 });
+
+test('vram requested with nothing active -> allowed', () => {
+  assert.deepEqual(checkConcurrency([], 'vram'), { ok: true });
+});
+
+test('vram requested while cpu is active -> allowed (cpu does not touch the graphics card)', () => {
+  assert.deepEqual(checkConcurrency(['cpu'], 'vram'), { ok: true });
+});
+
+test('cpu requested while vram is active -> allowed', () => {
+  assert.deepEqual(checkConcurrency(['vram'], 'cpu'), { ok: true });
+});
+
+test('vram requested while gpu is active -> rejected (same graphics card)', () => {
+  assert.deepEqual(checkConcurrency(['gpu'], 'vram'), { ok: false, active_component: 'gpu' });
+});
+
+test('gpu requested while vram is active -> rejected', () => {
+  assert.deepEqual(checkConcurrency(['vram'], 'gpu'), { ok: false, active_component: 'vram' });
+});
+
+test('vram requested while vram already active -> rejected (no duplicate same-component runs)', () => {
+  assert.deepEqual(checkConcurrency(['vram'], 'vram'), { ok: false, active_component: 'vram' });
+});
+
+test('vram requested while ram is active -> rejected', () => {
+  assert.deepEqual(checkConcurrency(['ram'], 'vram'), { ok: false, active_component: 'ram' });
+});
+
+test('ram requested while vram is active -> rejected (exclusive)', () => {
+  assert.deepEqual(checkConcurrency(['vram'], 'ram'), { ok: false, active_component: 'vram' });
+});
