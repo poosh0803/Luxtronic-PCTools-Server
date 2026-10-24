@@ -10,6 +10,8 @@
 // "internal tool" level (per the task's framing), not pixel-identical to the live dashboard's
 // Chart.js rendering.
 
+const fs = require('fs');
+const path = require('path');
 const PDFDocument = require('pdfkit');
 const { describeSystemInfo } = require('./systemInfo');
 
@@ -29,6 +31,8 @@ const STAT_DISPLAY = {
   min_seq_read_mb_s: { label: 'Sequential Read', unit: ' MB/s' },
   min_seq_write_mb_s: { label: 'Sequential Write', unit: ' MB/s' },
 };
+
+const LOGO_PATH = path.join(__dirname, '..', '..', 'public', 'img', 'logo.png');
 
 function fmtDate(d) {
   if (!d) return '-';
@@ -257,7 +261,14 @@ function resultLabel(run) {
 function generateSessionReportPdf({ session, testRuns, telemetryByRun }) {
   const doc = new PDFDocument({ margin: PAGE_MARGIN, size: 'A4', bufferPages: true });
 
-  doc.font('Helvetica-Bold').fontSize(18).text('Luxtronic PCTools -- Session Report', {
+  // Luxtronic logo, top right. Drawn at an absolute position so it doesn't move the text flow;
+  // skipped silently if the file is missing so a bad deploy can never break report generation.
+  if (fs.existsSync(LOGO_PATH)) {
+    const logoWidth = 72;
+    doc.image(LOGO_PATH, doc.page.width - PAGE_MARGIN - logoWidth, PAGE_MARGIN - 6, { width: logoWidth });
+  }
+
+  doc.font('Helvetica-Bold').fontSize(18).fillColor('#000').text('Luxtronic PCTools -- Session Report', {
     align: 'left',
   });
   doc.moveDown(0.5);

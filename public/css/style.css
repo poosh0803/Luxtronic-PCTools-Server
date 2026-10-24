@@ -113,8 +113,8 @@ header.topbar {
 }
 
 .brand-mark {
-  width: 30px;
-  height: 30px;
+  width: 36px;
+  height: 36px;
   border-radius: 6px;
   background: #fff;
   color: var(--brand-dark);
@@ -124,6 +124,15 @@ header.topbar {
   font-size: 16px;
   font-weight: 700;
   flex: none;
+}
+
+/* The Luxtronic emblem sits on the white tile so it reads on the amber header and in dark mode. */
+.brand-mark img {
+  width: 100%;
+  height: 100%;
+  padding: 3px;
+  box-sizing: border-box;
+  object-fit: contain;
 }
 
 header.topbar h1 {
