@@ -11,6 +11,7 @@ const {
   isValidComponent,
   isValidSessionType,
   isValidStopReason,
+  isValidRunSettings,
   isValidUuid,
 } = require('../src/lib/validation');
 
@@ -103,4 +104,13 @@ test('isValidUuid: rejects empty string, null, undefined, non-string', () => {
 
 test('isValidUuid: rejects a plain non-UUID string', () => {
   assert.equal(isValidUuid('not-a-uuid'), false);
+});
+
+test('isValidRunSettings: accepts absent/null/objects, rejects arrays, scalars and oversized payloads', () => {
+  for (const v of [undefined, null, {}, { duration_minutes: 1, mode: 'blend' }]) {
+    assert.equal(isValidRunSettings(v), true);
+  }
+  for (const v of [[], 'x', 5, true, { blob: 'x'.repeat(5000) }]) {
+    assert.equal(isValidRunSettings(v), false);
+  }
 });

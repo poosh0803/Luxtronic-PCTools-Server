@@ -18,6 +18,7 @@ const {
   isValidComponent,
   isValidSessionType,
   isValidStopReason,
+  isValidRunSettings,
   isValidUuid,
 } = require('../lib/validation');
 const { isValidSystemInfo } = require('../lib/systemInfo');
@@ -105,10 +106,15 @@ router.post('/api/sessions', requireApiKey(), async (req, res, next) => {
 // POST /api/sessions/:id/test-runs
 router.post('/api/sessions/:id/test-runs', requireApiKey(), async (req, res, next) => {
   const sessionId = req.params.id;
-  const { component } = req.body || {};
+  const { component, run_settings } = req.body || {};
 
   if (!isValidUuid(sessionId)) {
     return res.status(400).json({ error: 'invalid_request', message: 'invalid session id' });
+  }
+  if (!isValidRunSettings(run_settings)) {
+    return res
+      .status(400)
+      .json({ error: 'invalid_request', message: 'run_settings must be an object under 4KB' });
   }
   if (!isValidComponent(component)) {
     return res
@@ -152,7 +158,10 @@ router.post('/api/sessions/:id/test-runs', requireApiKey(), async (req, res, nex
     }
 
     const config = loadConfig();
-    const configSnapshot = config[component] || {};
+    // run_settings (the client's own duration / mode / ...) override the server config's values
+    // from the moment the run starts, so a running test already shows what it is really doing
+    // rather than the config file's 10 minutes until it completes.
+    const configSnapshot = { ...(config[component] || {}), ...(run_settings || {}) };
 
     const insertRes = await client.query(
       `INSERT INTO test_runs (session_id, component, config_snapshot)
@@ -208,11 +217,7 @@ router.patch('/api/sessions/:id/test-runs/:test_run_id', requireApiKey(), async 
     return res.status(400).json({ error: 'invalid_request', message: 'summary_stats must be an object' });
   }
 
-  if (
-    run_settings !== undefined &&
-    run_settings !== null &&
-    (typeof run_settings !== 'object' || Array.isArray(run_settings) || JSON.stringify(run_settings).length > 4096)
-  ) {
+  if (!isValidRunSettings(run_settings)) {
     return res
       .status(400)
       .json({ error: 'invalid_request', message: 'run_settings must be an object under 4KB' });

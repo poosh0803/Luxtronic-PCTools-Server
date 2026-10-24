@@ -25,6 +25,13 @@ function isValidStopReason(v) {
   return STOP_REASONS.includes(v);
 }
 
+/** run_settings (what the client actually ran with): an object under 4KB, or absent/null. */
+function isValidRunSettings(v) {
+  if (v === undefined || v === null) return true;
+  if (typeof v !== 'object' || Array.isArray(v)) return false;
+  return JSON.stringify(v).length <= 4096;
+}
+
 function isValidUuid(v) {
   return (
     typeof v === 'string' &&
@@ -40,5 +47,6 @@ module.exports = {
   isValidComponent,
   isValidSessionType,
   isValidStopReason,
+  isValidRunSettings,
   isValidUuid,
 };
