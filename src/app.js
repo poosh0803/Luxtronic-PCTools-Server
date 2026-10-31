@@ -4,6 +4,7 @@ const path = require('path');
 const express = require('express');
 const pcClientRoutes = require('./routes/pcClient');
 const dashboardRoutes = require('./routes/dashboard');
+const appsRoutes = require('./routes/apps');
 
 function createApp() {
   const app = express();
@@ -19,6 +20,9 @@ function createApp() {
 
   // Dashboard endpoints (CONTRACT.md section 4, "no auth" table).
   app.use(dashboardRoutes);
+
+  // Downloadable apps (public/apps.html).
+  app.use(appsRoutes);
 
   // Static dashboard UI.
   app.use(express.static(path.join(__dirname, '..', 'public')));

@@ -9,3 +9,7 @@ Thumbs.db
 # Raw technician API keys (see api_keys/README.md) -- secrets, never commit these.
 api_keys/*
 !api_keys/README.md
+
+# Uploaded app packages (src/lib/apps.js) -- binaries, never commit.
+data/
+.env.bak*

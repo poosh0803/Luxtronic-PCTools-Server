@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Luxtronic PCTools -- Apps</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="icon" type="image/png" href="/img/emblem.png">
+</head>
+<body data-category="app">
+  <script>try { if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-mode'); } catch (e) {}</script>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark"><img src="/img/emblem.png" alt="Luxtronic"></span>
+      <h1>Luxtronic PCTools</h1>
+      <span class="tagline">Hardware test dashboard</span>
+    </div>
+    <button type="button" class="dark-toggle" id="darkModeToggle" aria-label="Toggle dark mode"><i class="fas fa-moon" id="themeIcon"></i></button>
+  </header>
+  <nav class="nav-bar">
+    <a class="nav-item" href="/index.html"><i class="fas fa-gauge-high"></i> Sessions</a>
+    <a class="nav-item" href="/apps.html"><i class="fas fa-box-archive"></i> Apps</a>
+    <a class="nav-item" href="/drivers.html"><i class="fas fa-microchip"></i> Drivers</a>
+    <a class="nav-item" href="/tools.html"><i class="fas fa-screwdriver-wrench"></i> Tools</a>
+    <a class="nav-item" href="/technicians.html"><i class="fas fa-users"></i> Technicians</a>
+  </nav>
+  <main>
+    <div id="error" class="error-banner" style="display:none"></div>
+
+    <div class="apps-toolbar">
+      <div class="search-box">
+        <i class="fas fa-magnifying-glass"></i>
+        <input type="search" id="search" placeholder="Search apps..." autocomplete="off" />
+      </div>
+      <button type="button" id="new-app-btn"><i class="fas fa-plus"></i> New app</button>
+    </div>
+
+    <div class="panel">
+      <h2>Apps</h2>
+      <div class="table-scroll">
+        <table class="apps-table">
+          <thead>
+            <tr>
+              <th></th>
+              <th>Name</th>
+              <th>File</th>
+              <th>Updated</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="apps-body">
+            <tr><td colspan="5" class="empty-state">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+  <dialog id="new-app-dialog" class="modal">
+    <form id="create-form" method="dialog">
+      <div class="modal-head">
+        <h2>New app</h2>
+        <button type="button" class="modal-close secondary" id="cancel-btn" aria-label="Close"><i class="fas fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <label>Name
+          <input type="text" name="name" placeholder="e.g. HWiNFO" maxlength="100" required />
+        </label>
+        <label>Version
+          <input type="text" name="version" placeholder="optional" maxlength="50" />
+        </label>
+        <label>Description
+          <input type="text" name="description" placeholder="optional" maxlength="2000" />
+        </label>
+        <label>Installer / package
+          <input type="file" name="file" />
+        </label>
+        <label>Icon (optional)
+          <input type="file" name="icon" accept="image/png,image/jpeg,image/svg+xml,image/x-icon,image/webp,.ico" />
+        </label>
+        <p class="muted">
+          For an <code>.exe</code> with no icon chosen, the icon is extracted from the executable
+          automatically (Windows server only; 32&times;32). Upload an icon to override it.
+        </p>
+        <div class="upload-progress" id="upload-progress" style="display:none"><div id="upload-bar"></div><span id="upload-label"></span></div>
+      </div>
+      <div class="modal-foot">
+        <button type="submit" id="create-btn">Create</button>
+      </div>
+    </form>
+  </dialog>
+  <script src="/js/apps.js"></script>
+  <script src="/js/theme.js"></script>
+</body>
+</html>

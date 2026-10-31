@@ -110,5 +110,12 @@ disagrees with the text above, this section wins.
   charts always start at 0 s, new test boxes appear without refreshing, RAM test charts show memory in use /
   CPU temp / errors, SSD charts show live read/write speed. The PDF is a multi-section report with the PC
   specification before the result summary.
+- **Apps / Drivers / Tools** (branch `apps`): the server hosts installers for the PC client to download. One
+  `apps` table with a `category` (`app`/`driver`/`tool`, migrations 004-006); files and icons stored under
+  `APPS_DIR` (default `data/apps/`), uploaded as raw request bodies with a SHA-256 kept per file; icons are
+  uploaded or extracted from an .exe. Three dashboard pages (search, New/Edit pop-ups, Download, Delete) share
+  one script. The client has matching Apps / Drivers / Tools tabs (list or grid view, checksum-verified
+  download, run, remove downloaded) and a first-start wizard for URL / API key / offline mode. Endpoints:
+  CONTRACT.md section 4.
 - **Still open**: port the v1 unit tests; verify TestMem5 hiding, memtest_vulkan device handling and a real RAM
   error on hardware; code signing/installer (section 7 backlog unchanged).
