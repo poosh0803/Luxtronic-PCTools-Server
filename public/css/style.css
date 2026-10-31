@@ -455,6 +455,75 @@ tr.session-row:hover {
   font-size: 12px;
 }
 
+/* Apps page (public/apps.html) */
+.app-icon {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  border-radius: 8px;
+  display: block;
+}
+
+.app-icon-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--aborted-bg);
+  color: var(--muted);
+  font-size: 18px;
+}
+
+.sha {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 11px;
+  word-break: break-all;
+  max-width: 340px;
+}
+
+/* Download link: styled to match button.secondary next to it in .row-actions. */
+a.button-link {
+  display: inline-block;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-family: inherit;
+  font-weight: 600;
+  line-height: normal;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  background: var(--panel-bg);
+  color: var(--text);
+  border: 1px solid var(--input-border);
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+
+a.button-link:hover {
+  background: var(--accent-soft-bg);
+  border-color: var(--accent);
+}
+
+.upload-progress {
+  position: relative;
+  height: 22px;
+  margin-top: 10px;
+  border-radius: 6px;
+  background: var(--aborted-bg);
+  overflow: hidden;
+}
+
+#upload-bar {
+  height: 100%;
+  width: 0;
+  background: var(--pass);
+  opacity: 0.35;
+}
+
+#upload-label {
+  position: absolute;
+  inset: 0;
+  padding: 3px 8px;
+  font-size: 12px;
+}
+
 .test-run-header h3 {
   margin: 0;
   font-size: 14px;
@@ -732,4 +801,102 @@ body.dark-mode .test-run-header h3 i { color: var(--accent); }
 
 @media (max-width: 700px) {
   .spec-grid { columns: 1; }
+}
+
+/* Apps toolbar + new-app dialog */
+.apps-toolbar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.search-box {
+  flex: 1;
+  position: relative;
+}
+
+.search-box i {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.search-box input {
+  width: 100%;
+  box-sizing: border-box;
+  padding-left: 34px;
+}
+
+.modal {
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-lg);
+  background: var(--panel-bg);
+  color: var(--text);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+  padding: 0;
+  width: min(520px, calc(100vw - 32px));
+}
+
+.modal::backdrop {
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.modal-head h2 {
+  margin: 0;
+}
+
+.modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+}
+
+.modal-body label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.modal-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--panel-border);
+}
+
+/* Apps/Drivers table: fixed column widths (share of the table) so the layout doesn't shift with
+   content - and is the same on both pages. */
+table.apps-table {
+  table-layout: fixed;
+  min-width: 900px;
+}
+
+.apps-table th:nth-child(1) { width: 5.5%; }
+.apps-table th:nth-child(2) { width: 23.5%; }
+.apps-table th:nth-child(3) { width: 37%; }
+.apps-table th:nth-child(4) { width: 11.5%; }
+.apps-table th:nth-child(5) { width: 22.5%; }
+
+.apps-table td {
+  overflow-wrap: anywhere;
+}
+
+.apps-table .sha {
+  max-width: none;
 }

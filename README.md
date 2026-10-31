@@ -126,7 +126,7 @@ ecosystem.config.js` against a real Postgres, confirmed the dashboard and auth b
 npm test
 ```
 
-90 tests (Node's built-in `node --test`, no framework dependency -- see
+93 tests (Node's built-in `node --test`, no framework dependency -- see
 `.claude/skills/unit-testing/SKILL.md` for the conventions this suite follows). Covers every
 pure/deterministic piece: the concurrency rule (CONTRACT.md section 6) and result computation
 (section 7, including the SSD ATA-vs-NVMe threshold split and the stop_reason/aborted and
@@ -143,7 +143,8 @@ instead.
 ecosystem.config.js   pm2 process definition (production/LAN deploy, see "Start the server" above)
 migrations/           Plain SQL migrations (001_init.sql = CONTRACT.md section 2 schema;
                         002_vram_component.sql adds the 'vram' component;
-                        003_session_system_info.sql adds sessions.system_info)
+                        003_session_system_info.sql adds sessions.system_info;
+                        004-006 add the apps table, its category column and the tool category)
 db/
   pool.js              pg Pool, reads DATABASE_URL
   migrate.js           Minimal migration runner (tracks applied files in schema_migrations)
@@ -163,9 +164,13 @@ src/
     testRunCache.js        In-memory test_run_id -> {session_id, component} cache
     validation.js          Small input-validation helpers (incl. run_settings / system_info shapes)
     systemInfo.js          Builds the PC specification summary for the dashboard and the PDF
+    apps.js                Disk storage for uploaded apps/drivers/tools: streamed saves with SHA-256,
+                              icon extraction from an .exe (PowerShell + System.Drawing, Windows only)
     pdf.js                 PDF report generation (pdfkit)
   routes/
     pcClient.js            PC-client endpoints (auth required)
+    apps.js                 Apps/drivers/tools: CRUD, raw-body file and icon upload, download
+                               (CONTRACT.md section 4)
     dashboard.js            Dashboard endpoints (no auth) -- includes the force-close
                                .../stop and .../end endpoints, and technician management
                                (CONTRACT.md section 4)
@@ -176,18 +181,24 @@ src/
 scripts/
   create-technician.js    CLI wrapper around src/lib/technicians.js -- for shell access / bulk
                              import; public/technicians.html covers this day-to-day now
+data/apps/              Uploaded app/driver/tool files and icons (git-ignored; APPS_DIR in .env,
+                            back this folder up together with the database)
 api_keys/                Generated technician API key files (git-ignored except its own README --
                             see api_keys/README.md)
 public/                  Static dashboard (plain HTML/CSS/JS, no build step)
   index.html               Session list + search
   session.html              Session detail: live/historical chart per test_run, PDF export link,
                                force-stop/end controls
+  apps.html, drivers.html, tools.html
+                            Upload and manage downloadable apps / drivers / tools for the PC client:
+                               search, "New" pop-up, Edit pop-up (fields, new file, icon), Download, Delete
+                               (one shared js/apps.js, the page picks its category from <body data-category>)
   technicians.html          List/create/revoke technicians, one-time API key reveal on creation
-  js/app.js, js/session.js, js/technicians.js, js/theme.js  (theme.js: light/dark toggle via body.dark-mode, opt-in only; styled per LUXTRONIC-DESIGN-GUIDELINES.md)
+  js/app.js, js/session.js, js/technicians.js, js/apps.js, js/theme.js  (theme.js: light/dark toggle via body.dark-mode, opt-in only; styled per LUXTRONIC-DESIGN-GUIDELINES.md)
   css/style.css
   img/                     Luxtronic logo + emblem (dashboard header, PDF)
   vendor/chart.umd.min.js  Vendored Chart.js (no CDN dependency)
-test/                    node:test unit tests (90 tests -- see "Run the unit tests" above)
+test/                    node:test unit tests (93 tests -- see "Run the unit tests" above)
 .claude/skills/unit-testing/  Project-scoped Claude Code skill documenting this suite's conventions
 ```
 
@@ -356,7 +367,7 @@ The rebuilt client (Luxtronic-PCTools-Client) added a few things this server now
   designed document (slim header with logo, PC specification, result summary, per-test sections).
 
 **Deploying to the LAN box** (`/root/Luxtronic-PCTools-Server`, pm2 `luxtronic-pctools-server`): `git pull`,
-`npm run migrate` when a new migration exists (001-003 so far), then `pm2 restart luxtronic-pctools-server`.
+`npm run migrate` when a new migration exists (001-006 so far), then `pm2 restart luxtronic-pctools-server`.
 Migrate before restarting - e.g. a `vram` run is rejected until 002 is applied. Restart the local pm2
 service too after changing server files on the development PC.
 
