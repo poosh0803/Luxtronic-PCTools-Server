@@ -4,18 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-**CPU-only walking skeleton implemented** (PROJECT_PLAN.md section 9's first milestone): full DB
-schema, all REST endpoints, the concurrency rule (CONTRACT.md section 6), result computation
-(section 7), both WebSocket protocols (section 5), and a minimal dashboard (session list, session
-detail with live + historical charts, PDF export) are in place in this repo (`src/`, `public/`,
-`migrations/`). Only the CPU path is exercised end-to-end by tests/manual verification; GPU/RAM/SSD
-config sections exist as untouched contract placeholders. See [README.md](README.md) for exact
-run commands and a list of judgment calls made where CONTRACT.md was ambiguous.
+**Full server in production use** on the LAN box with the rebuilt v2 client: schema (migrations 001-003),
+all REST endpoints, the concurrency rule (CONTRACT.md section 6), result computation (section 7), both
+WebSocket protocols (section 5), components cpu/gpu/vram/ram/ssd, `system_info` (PC specification) and
+`run_settings`, a dashboard (session list, session detail with live + historical charts, technicians page)
+and a designed PDF report. Dashboard and PDF follow LUXTRONIC-DESIGN-GUIDELINES.md (compact header, 1080p
+layout) - keep new UI within them. See [README.md](README.md) for run/deploy commands and judgment calls.
 
-[PROJECT_PLAN.md](PROJECT_PLAN.md) remains the source of truth for architecture and scope
-decisions. [CONTRACT.md](CONTRACT.md) is the frozen API/DB/config contract both this server and the
-PC-client implementation must match exactly — treat it as canonical, not a suggestion, since the
-two sides are built independently against it. Both are unchanged by this implementation pass.
+[PROJECT_PLAN.md](PROJECT_PLAN.md) (its last section lists changes since it was written) is the source of
+truth for architecture and scope. [CONTRACT.md](CONTRACT.md) is the contract with the client; this repo's
+copy is canonical and the client repo keeps an identical copy. After changing server files, restart the local
+pm2 service (`pm2 restart luxtronic-pctools-server`); deploy to the LAN box only when asked.
 
 ## Build/lint/test commands (this repo)
 
@@ -23,7 +22,7 @@ two sides are built independently against it. Both are unchanged by this impleme
 - `npm run migrate` — apply `migrations/*.sql` against `DATABASE_URL` (see `.env.example`).
 - `npm run seed:technician -- "Name"` — provision a technician + print a raw API key.
 - `npm start` / `npm run dev` — run the server (`dev` uses `node --watch`).
-- `npm test` — run `node:test` unit tests in `test/` (concurrency + result-computation logic).
+- `npm test` — run `node:test` unit tests in `test/` (90 tests: concurrency, result computation, validation, config, auth).
 - No linter is configured yet.
 
 ## What this project is

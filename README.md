@@ -4,9 +4,12 @@ Node.js/Express + PostgreSQL server for the Luxtronic PCTools hardware-testing s
 telemetry from the PC-side client (`Luxtronic-PCTools-Client`), evaluates pass/fail against a
 config file of thresholds, and serves a live-updating web dashboard with PDF export.
 
-**This pass implements the CPU-only walking skeleton** per PROJECT_PLAN.md section 9: the full DB
-schema and all REST endpoints exist, but only the CPU path is exercised by tests/manual
-verification. See "Scope notes and judgment calls" below.
+**Current state:** the full server is running on the LAN box with the rebuilt (v2) client: all five
+components (cpu, gpu, vram, ram, ssd), the PC specification (`system_info`), client-reported run
+settings, live and historical charts (RAM memory/CPU-temp, SSD live read/write speed), and a PDF report.
+The dashboard and PDF follow LUXTRONIC-DESIGN-GUIDELINES.md and are laid out for 1080p. The sections
+below that talk about the "CPU-only skeleton" are the original implementation notes and are kept for
+context; "Aligned with the v2 client" lists what changed since.
 
 Canonical references: [PROJECT_PLAN.md](PROJECT_PLAN.md) (architecture/decisions) and
 [CONTRACT.md](CONTRACT.md) (exact API/DB/WebSocket contract -- this implementation follows it
@@ -123,7 +126,7 @@ ecosystem.config.js` against a real Postgres, confirmed the dashboard and auth b
 npm test
 ```
 
-83 tests (Node's built-in `node --test`, no framework dependency -- see
+90 tests (Node's built-in `node --test`, no framework dependency -- see
 `.claude/skills/unit-testing/SKILL.md` for the conventions this suite follows). Covers every
 pure/deterministic piece: the concurrency rule (CONTRACT.md section 6) and result computation
 (section 7, including the SSD ATA-vs-NVMe threshold split and the stop_reason/aborted and
@@ -139,7 +142,8 @@ instead.
 ```
 ecosystem.config.js   pm2 process definition (production/LAN deploy, see "Start the server" above)
 migrations/           Plain SQL migrations (001_init.sql = CONTRACT.md section 2 schema;
-                        002_vram_component.sql adds the 'vram' component)
+                        002_vram_component.sql adds the 'vram' component;
+                        003_session_system_info.sql adds sessions.system_info)
 db/
   pool.js              pg Pool, reads DATABASE_URL
   migrate.js           Minimal migration runner (tracks applied files in schema_migrations)
@@ -157,7 +161,8 @@ src/
     concurrency.js        CONTRACT.md section 6 rule, as a pure function
     resultComputation.js  CONTRACT.md section 7 rule, as a pure function
     testRunCache.js        In-memory test_run_id -> {session_id, component} cache
-    validation.js          Small input-validation helpers
+    validation.js          Small input-validation helpers (incl. run_settings / system_info shapes)
+    systemInfo.js          Builds the PC specification summary for the dashboard and the PDF
     pdf.js                 PDF report generation (pdfkit)
   routes/
     pcClient.js            PC-client endpoints (auth required)
@@ -180,8 +185,9 @@ public/                  Static dashboard (plain HTML/CSS/JS, no build step)
   technicians.html          List/create/revoke technicians, one-time API key reveal on creation
   js/app.js, js/session.js, js/technicians.js, js/theme.js  (theme.js: light/dark toggle via body.dark-mode, opt-in only; styled per LUXTRONIC-DESIGN-GUIDELINES.md)
   css/style.css
+  img/                     Luxtronic logo + emblem (dashboard header, PDF)
   vendor/chart.umd.min.js  Vendored Chart.js (no CDN dependency)
-test/                    node:test unit tests (83 tests -- see "Run the unit tests" above)
+test/                    node:test unit tests (90 tests -- see "Run the unit tests" above)
 .claude/skills/unit-testing/  Project-scoped Claude Code skill documenting this suite's conventions
 ```
 
@@ -342,19 +348,21 @@ The rebuilt client (Luxtronic-PCTools-Client) added a few things this server now
   built from `src/lib/systemInfo.js`). Sessions from older clients simply have none.
 - Single-test tabs and the client's Offline mode never contact the server, so there's nothing to handle.
 
-**Deploying to the LAN box** (not done from here): pull, then `npm run migrate` (applies 002) and
-`pm2 restart` the service. Until 002 is applied, a `vram` test run is rejected with a 500 from the enum.
+- **Run settings at test start**: the client also sends `run_settings` with `POST .../test-runs`, merged over
+  the config section when the run is created, so the live page shows the real duration immediately instead of
+  the server config's value.
+- **Dashboard/PDF**: new test boxes appear without a refresh; chart time axes always start at 0 s; the RAM
+  chart plots memory in use, CPU temp and errors; SSD charts plot live read/write speed; the PDF report is a
+  designed document (slim header with logo, PC specification, result summary, per-test sections).
 
-## Explicitly not done in this pass (by design, per task scope)
+**Deploying to the LAN box** (`/root/Luxtronic-PCTools-Server`, pm2 `luxtronic-pctools-server`): `git pull`,
+`npm run migrate` when a new migration exists (001-003 so far), then `pm2 restart luxtronic-pctools-server`.
+Migrate before restarting - e.g. a `vram` run is rejected until 002 is applied. Restart the local pm2
+service too after changing server files on the development PC.
 
-- No GPU/RAM-specific parsing, threshold tuning, or wrapper logic -- those config sections are
-  still the contract's placeholder example values, untouched.
-- SSD thresholds are real now (bus-aware ATA/NVMe SMART fields, see "Scope notes" item 2), but
-  that's config/result-computation only -- the client's SSD test-run orchestration (UI, session
-  `ssd_serials` wiring, actually running CrystalDiskMark) isn't built yet, so nothing exercises
-  these thresholds end-to-end outside of manual `curl`/test calls.
-- No dashboard login/auth (explicitly no-login per PROJECT_PLAN.md).
-- No admin UI for editing `config/default.json` (hand-edit the file, per plan).
-- No connection to or configuration of the real `192.168.68.255` production box -- everything here
-  is local-dev-configurable via `.env`.
-- Nothing pushed to a remote -- this repo has no remote configured, and none was added.
+## Explicitly not done (by design)
+
+- GPU/RAM thresholds in `config/default.json` are still starter values; tune them with real hardware data.
+- No dashboard login/auth (explicitly no-login per PROJECT_PLAN.md) and no admin UI for editing
+  `config/default.json` (hand-edit the file, per plan).
+- Routes and WebSocket handlers have no automated tests (they need Postgres); the manual checklist covers them.
