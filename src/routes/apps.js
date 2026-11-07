@@ -13,7 +13,24 @@ const apps = require('../lib/apps');
 
 const router = express.Router();
 
-const CATEGORIES = ['app', 'driver', 'tool'];
+const CATEGORIES = ['app', 'driver', 'tool', 'client'];
+const CATEGORY_LIST = 'app, driver, tool or client';
+
+/**
+ * Client releases are told apart by version only, so for category 'client' the version is required
+ * and must be unique (case-insensitive). Returns an error response body, or null when fine.
+ */
+async function clientVersionProblem(category, version, excludeId) {
+  if (category !== 'client') return null;
+  if (!version) return { status: 400, error: 'invalid_request', message: 'a client release needs a version' };
+  const { rows } = await pool.query(
+    "SELECT 1 FROM apps WHERE category = 'client' AND lower(version) = lower($1) AND ($2::uuid IS NULL OR id <> $2) LIMIT 1",
+    [version, excludeId || null]
+  );
+  return rows.length
+    ? { status: 409, error: 'duplicate_version', message: `version ${version} is already published` }
+    : null;
+}
 
 const COLUMNS =
   'id, category, name, description, version, file_name, file_size, file_sha256, icon_mime, icon_source, created_at, updated_at';
@@ -40,15 +57,17 @@ async function loadApp(req, res) {
   return rows[0];
 }
 
-// ?category=app|driver|tool (default app, so the PC client's existing app list is unchanged).
+// ?category=app|driver|tool|client (default app, so the PC client's existing app list is unchanged).
+// Client releases are listed newest first, everything else by name.
 router.get('/api/apps', async (req, res, next) => {
   const category = req.query.category === undefined ? 'app' : req.query.category;
   if (!CATEGORIES.includes(category)) {
-    return res.status(400).json({ error: 'invalid_request', message: 'category must be app, driver or tool' });
+    return res.status(400).json({ error: 'invalid_request', message: `category must be ${CATEGORY_LIST}` });
   }
   try {
+    const order = category === 'client' ? 'created_at DESC' : 'lower(name)';
     const { rows } = await pool.query(
-      `SELECT ${COLUMNS} FROM apps WHERE category = $1 ORDER BY lower(name)`,
+      `SELECT ${COLUMNS} FROM apps WHERE category = $1 ORDER BY ${order}`,
       [category]
     );
     res.json(rows);
@@ -65,10 +84,12 @@ router.post('/api/apps', async (req, res, next) => {
   if (!CATEGORIES.includes(category) || !isNonEmptyString(body.name) || body.name.length > 100 || description === undefined || version === undefined) {
     return res.status(400).json({
       error: 'invalid_request',
-      message: 'category must be app, driver or tool; name is required (max 100 chars); description max 2000, version max 50',
+      message: `category must be ${CATEGORY_LIST}; name is required (max 100 chars); description max 2000, version max 50`,
     });
   }
   try {
+    const problem = await clientVersionProblem(category, version, null);
+    if (problem) return res.status(problem.status).json({ error: problem.error, message: problem.message });
     const { rows } = await pool.query(
       `INSERT INTO apps (name, description, version, category) VALUES ($1, $2, $3, $4) RETURNING ${COLUMNS}`,
       [body.name.trim(), description, version, category]
@@ -90,6 +111,8 @@ router.patch('/api/apps/:id', async (req, res, next) => {
     if (!isNonEmptyString(name) || name.length > 100 || description === undefined || version === undefined) {
       return res.status(400).json({ error: 'invalid_request', message: 'invalid name, description or version' });
     }
+    const problem = await clientVersionProblem(app.category, version, app.id);
+    if (problem) return res.status(problem.status).json({ error: problem.error, message: problem.message });
     const { rows } = await pool.query(
       `UPDATE apps SET name = $1, description = $2, version = $3, updated_at = now()
        WHERE id = $4 RETURNING ${COLUMNS}`,

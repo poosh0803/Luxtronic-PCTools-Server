@@ -117,5 +117,8 @@ disagrees with the text above, this section wins.
   one script. The client has matching Apps / Drivers / Tools tabs (list or grid view, checksum-verified
   download, run, remove downloaded) and a first-start wizard for URL / API key / offline mode. Endpoints:
   CONTRACT.md section 4.
+- **Publish page**: new PC client builds are uploaded on `publish.html` with a required, unique version and
+  optional release notes (category `client` in the same `apps` table, migration 007); the newest upload is
+  marked Latest and older releases stay downloadable. The client does not check for updates yet.
 - **Still open**: port the v1 unit tests; verify TestMem5 hiding, memtest_vulkan device handling and a real RAM
   error on hardware; code signing/installer (section 7 backlog unchanged).

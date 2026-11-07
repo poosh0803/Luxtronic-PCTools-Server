@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Luxtronic PCTools -- Publish</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="icon" type="image/png" href="/img/emblem.png">
+</head>
+<body>
+  <script>try { if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-mode'); } catch (e) {}</script>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark"><img src="/img/emblem.png" alt="Luxtronic"></span>
+      <h1>Luxtronic PCTools</h1>
+      <span class="tagline">Hardware test dashboard</span>
+    </div>
+    <button type="button" class="dark-toggle" id="darkModeToggle" aria-label="Toggle dark mode"><i class="fas fa-moon" id="themeIcon"></i></button>
+  </header>
+  <nav class="nav-bar">
+    <a class="nav-item" href="/index.html"><i class="fas fa-gauge-high"></i> Sessions</a>
+    <a class="nav-item" href="/apps.html"><i class="fas fa-box-archive"></i> Apps</a>
+    <a class="nav-item" href="/drivers.html"><i class="fas fa-microchip"></i> Drivers</a>
+    <a class="nav-item" href="/tools.html"><i class="fas fa-screwdriver-wrench"></i> Tools</a>
+    <a class="nav-item" href="/publish.html"><i class="fas fa-cloud-arrow-up"></i> Publish</a>
+    <a class="nav-item" href="/technicians.html"><i class="fas fa-users"></i> Technicians</a>
+  </nav>
+  <main>
+    <div id="error" class="error-banner" style="display:none"></div>
+
+    <div class="apps-toolbar">
+      <div class="search-box">
+        <i class="fas fa-magnifying-glass"></i>
+        <input type="search" id="search" placeholder="Search versions or notes..." autocomplete="off" />
+      </div>
+      <button type="button" id="new-release-btn"><i class="fas fa-plus"></i> New release</button>
+    </div>
+
+    <div class="panel">
+      <h2>PCTools client releases</h2>
+      <p class="muted">Upload each new build of the PC client here with its version. The newest release is marked Latest; older ones stay available until deleted.</p>
+      <div class="table-scroll">
+        <table class="apps-table releases-table">
+          <thead>
+            <tr>
+              <th>Version</th>
+              <th>Release notes</th>
+              <th>File</th>
+              <th>Uploaded</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="releases-body">
+            <tr><td colspan="5" class="empty-state">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+  <dialog id="release-dialog" class="modal">
+    <form id="release-form" method="dialog">
+      <div class="modal-head">
+        <h2>New release</h2>
+        <button type="button" class="modal-close secondary" id="cancel-btn" aria-label="Close"><i class="fas fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <label>Version
+          <input type="text" name="version" placeholder="e.g. 2.1.0" maxlength="50" required />
+        </label>
+        <label>Release notes
+          <textarea name="notes" rows="3" placeholder="optional - what changed" maxlength="2000"></textarea>
+        </label>
+        <label>Client build
+          <input type="file" name="file" />
+        </label>
+        <div class="upload-progress" id="upload-progress" style="display:none"><div id="upload-bar"></div><span id="upload-label"></span></div>
+      </div>
+      <div class="modal-foot">
+        <button type="submit" id="save-btn">Publish</button>
+      </div>
+    </form>
+  </dialog>
+  <script src="/js/common.js"></script>
+  <script src="/js/publish.js"></script>
+  <script src="/js/theme.js"></script>
+</body>
+</html>
