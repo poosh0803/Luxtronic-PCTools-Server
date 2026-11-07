@@ -900,3 +900,31 @@ table.apps-table {
 .apps-table .sha {
   max-width: none;
 }
+
+/* Publish page (public/publish.html): client releases */
+.releases-table th:nth-child(1) { width: 14%; }
+.releases-table th:nth-child(2) { width: 24%; }
+.releases-table th:nth-child(3) { width: 28%; }
+.releases-table th:nth-child(4) { width: 12%; }
+.releases-table th:nth-child(5) { width: 22%; }
+
+.releases-table td.notes {
+  white-space: pre-wrap;
+}
+
+.modal-body textarea {
+  font-size: 14px;
+  padding: 8px 10px;
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-sm);
+  background: var(--input-bg);
+  color: var(--text);
+  font-family: inherit;
+  resize: vertical;
+}
+
+.modal-body textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft-bg);
+}
