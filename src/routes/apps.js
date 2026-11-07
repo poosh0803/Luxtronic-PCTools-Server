@@ -159,10 +159,8 @@ router.put('/api/apps/:id/file', async (req, res, next) => {
     let iconMime = app.icon_mime;
     let iconSource = app.icon_source;
     if (/\.exe$/i.test(fileName) && app.icon_source !== 'upload') {
-      apps.removeIcons(app.id);
-      const ok = await apps.extractExeIcon(apps.packagePath(app.id), apps.iconPath(app.id, 'image/png'));
-      iconMime = ok ? 'image/png' : null;
-      iconSource = ok ? 'extracted' : null;
+      iconMime = await apps.extractAndStoreExeIcon(app.id, apps.packagePath(app.id));
+      iconSource = iconMime ? 'extracted' : null;
     }
 
     const { rows } = await pool.query(

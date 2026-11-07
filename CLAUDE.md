@@ -22,7 +22,7 @@ pm2 service (`pm2 restart luxtronic-pctools-server`); deploy to the LAN box only
 - `npm run migrate` — apply `migrations/*.sql` against `DATABASE_URL` (see `.env.example`).
 - `npm run seed:technician -- "Name"` — provision a technician + print a raw API key.
 - `npm start` / `npm run dev` — run the server (`dev` uses `node --watch`).
-- `npm test` — run `node:test` unit tests in `test/` (93 tests: concurrency, result computation, validation, config, auth).
+- `npm test` — run `node:test` unit tests in `test/` (97 tests: concurrency, result computation, validation, config, auth).
 - No linter is configured yet.
 
 ## What this project is

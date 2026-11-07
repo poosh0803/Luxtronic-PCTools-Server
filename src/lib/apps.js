@@ -10,6 +10,7 @@ const path = require('path');
 const { Transform } = require('stream');
 const { pipeline } = require('stream/promises');
 const { execFile } = require('child_process');
+const { extractBestIconFromExe } = require('./exeIcon');
 
 const APPS_DIR = path.resolve(
   __dirname, '..', '..', process.env.APPS_DIR || path.join('data', 'apps')
@@ -99,6 +100,23 @@ function extractExeIcon(exePath, outPngPath) {
   });
 }
 
+/**
+ * Extracts an .exe's icon and stores it as the app's icon. Reads the icon straight out of the PE
+ * resources (lib/exeIcon.js, works on any OS: the largest image as a PNG, or an .ico for old bitmap
+ * icons); on a Windows host, falls back to System.Drawing's 32x32 PNG for the odd exe the reader
+ * can't handle. Resolves to the
+ * icon's mime type, or null when there is none (the caller then leaves the app without an icon).
+ */
+async function extractAndStoreExeIcon(id, exePath) {
+  removeIcons(id);
+  const icon = extractBestIconFromExe(exePath);
+  if (icon) {
+    fs.writeFileSync(iconPath(id, icon.mime), icon.data);
+    return icon.mime;
+  }
+  return (await extractExeIcon(exePath, iconPath(id, 'image/png'))) ? 'image/png' : null;
+}
+
 function removeIcons(id) {
   const dir = appDir(id);
   if (!fs.existsSync(dir)) return;
@@ -112,5 +130,5 @@ function removeAppFiles(id) {
 module.exports = {
   APPS_DIR, MAX_UPLOAD_BYTES, MAX_ICON_BYTES, ICON_TYPES,
   appDir, packagePath, iconPath, sanitizeDownloadName,
-  saveStream, extractExeIcon, removeIcons, removeAppFiles,
+  saveStream, extractExeIcon, extractAndStoreExeIcon, removeIcons, removeAppFiles,
 };

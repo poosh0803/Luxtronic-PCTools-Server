@@ -126,7 +126,7 @@ ecosystem.config.js` against a real Postgres, confirmed the dashboard and auth b
 npm test
 ```
 
-93 tests (Node's built-in `node --test`, no framework dependency -- see
+97 tests (Node's built-in `node --test`, no framework dependency -- see
 `.claude/skills/unit-testing/SKILL.md` for the conventions this suite follows). Covers every
 pure/deterministic piece: the concurrency rule (CONTRACT.md section 6) and result computation
 (section 7, including the SSD ATA-vs-NVMe threshold split and the stop_reason/aborted and
@@ -165,7 +165,8 @@ src/
     validation.js          Small input-validation helpers (incl. run_settings / system_info shapes)
     systemInfo.js          Builds the PC specification summary for the dashboard and the PDF
     apps.js                Disk storage for uploaded apps/drivers/tools: streamed saves with SHA-256,
-                              icon extraction from an .exe (PowerShell + System.Drawing, Windows only)
+                              icon extraction from an .exe (via exeIcon.js; PowerShell + System.Drawing as a Windows fallback)
+    exeIcon.js             Reads an .exe's icon out of its PE resources on any OS (PNG or .ico), no native tools
     pdf.js                 PDF report generation (pdfkit)
   routes/
     pcClient.js            PC-client endpoints (auth required)
@@ -179,6 +180,8 @@ src/
     telemetry.js             /ws/telemetry connection handler
     live.js                  /ws/live connection handler
 scripts/
+  extract-icons.js        Fills in missing icons for .exe files uploaded before extraction worked on the host
+                             (node scripts/extract-icons.js [--all]); never touches manually uploaded icons
   create-technician.js    CLI wrapper around src/lib/technicians.js -- for shell access / bulk
                              import; public/technicians.html covers this day-to-day now
 data/apps/              Uploaded app/driver/tool files and icons (git-ignored; APPS_DIR in .env,
@@ -200,7 +203,7 @@ public/                  Static dashboard (plain HTML/CSS/JS, no build step)
   css/style.css
   img/                     Luxtronic logo + emblem (dashboard header, PDF)
   vendor/chart.umd.min.js  Vendored Chart.js (no CDN dependency)
-test/                    node:test unit tests (93 tests -- see "Run the unit tests" above)
+test/                    node:test unit tests (97 tests -- see "Run the unit tests" above)
 .claude/skills/unit-testing/  Project-scoped Claude Code skill documenting this suite's conventions
 ```
 
