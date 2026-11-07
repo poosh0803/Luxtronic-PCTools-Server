@@ -144,7 +144,7 @@ ecosystem.config.js   pm2 process definition (production/LAN deploy, see "Start 
 migrations/           Plain SQL migrations (001_init.sql = CONTRACT.md section 2 schema;
                         002_vram_component.sql adds the 'vram' component;
                         003_session_system_info.sql adds sessions.system_info;
-                        004-007 add the apps table, its category column and the tool and client categories)
+                        004-008 add the apps table, its category column and the tool, client and game categories)
 db/
   pool.js              pg Pool, reads DATABASE_URL
   migrate.js           Minimal migration runner (tracks applied files in schema_migrations)
@@ -189,8 +189,8 @@ public/                  Static dashboard (plain HTML/CSS/JS, no build step)
   index.html               Session list + search
   session.html              Session detail: live/historical chart per test_run, PDF export link,
                                force-stop/end controls
-  apps.html, drivers.html, tools.html
-                            Upload and manage downloadable apps / drivers / tools for the PC client:
+  apps.html, drivers.html, tools.html, games.html
+                            Upload and manage downloadable apps / drivers / tools / games for the PC client:
                                search, "New" pop-up, Edit pop-up (fields, new file, icon), Download, Delete
                                (one shared js/apps.js, the page picks its category from <body data-category>)
   publish.html              Upload new builds of the PCTools client with a version and release notes
@@ -369,7 +369,7 @@ The rebuilt client (Luxtronic-PCTools-Client) added a few things this server now
   designed document (slim header with logo, PC specification, result summary, per-test sections).
 
 **Deploying to the LAN box** (`/root/Luxtronic-PCTools-Server`, pm2 `luxtronic-pctools-server`): `git pull`,
-`npm run migrate` when a new migration exists (001-007 so far), then `pm2 restart luxtronic-pctools-server`.
+`npm run migrate` when a new migration exists (001-008 so far), then `pm2 restart luxtronic-pctools-server`.
 Migrate before restarting - e.g. a `vram` run is rejected until 002 is applied. Restart the local pm2
 service too after changing server files on the development PC.
 

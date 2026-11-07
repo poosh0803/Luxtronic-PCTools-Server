@@ -13,8 +13,8 @@ const apps = require('../lib/apps');
 
 const router = express.Router();
 
-const CATEGORIES = ['app', 'driver', 'tool', 'client'];
-const CATEGORY_LIST = 'app, driver, tool or client';
+const CATEGORIES = ['app', 'driver', 'tool', 'client', 'game'];
+const CATEGORY_LIST = 'app, driver, tool, game or client';
 
 /**
  * Client releases are told apart by version only, so for category 'client' the version is required
@@ -57,7 +57,7 @@ async function loadApp(req, res) {
   return rows[0];
 }
 
-// ?category=app|driver|tool|client (default app, so the PC client's existing app list is unchanged).
+// ?category=app|driver|tool|game|client (default app, so the PC client's existing app list is unchanged).
 // Client releases are listed newest first, everything else by name.
 router.get('/api/apps', async (req, res, next) => {
   const category = req.query.category === undefined ? 'app' : req.query.category;

@@ -117,6 +117,7 @@ disagrees with the text above, this section wins.
   one script. The client has matching Apps / Drivers / Tools tabs (list or grid view, checksum-verified
   download, run, remove downloaded) and a first-start wizard for URL / API key / offline mode. Endpoints:
   CONTRACT.md section 4.
+- **Games**: a fifth `apps` category (`game`, migration 008) with its own dashboard page (`games.html`) and client tab, same as Tools.
 - **Publish page**: new PC client builds are uploaded on `publish.html` with a required, unique version and
   optional release notes (category `client` in the same `apps` table, migration 007); the newest upload is
   marked Latest and older releases stay downloadable. The client does not check for updates yet.

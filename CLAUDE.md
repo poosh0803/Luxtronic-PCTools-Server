@@ -4,10 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-**Full server in production use** on the LAN box with the rebuilt v2 client: schema (migrations 001-007),
+**Full server in production use** on the LAN box with the rebuilt v2 client: schema (migrations 001-008),
 all REST endpoints, the concurrency rule (CONTRACT.md section 6), result computation (section 7), both
 WebSocket protocols (section 5), components cpu/gpu/vram/ram/ssd, `system_info` (PC specification) and
-`run_settings`, a dashboard (session list, session detail with live + historical charts, technicians page, and Apps / Drivers / Tools pages where installers are uploaded for the PC client to download, and a Publish page where new PC client builds are uploaded with a version)
+`run_settings`, a dashboard (session list, session detail with live + historical charts, technicians page, and Apps / Drivers / Tools / Games pages where installers are uploaded for the PC client to download, and a Publish page where new PC client builds are uploaded with a version)
 and a designed PDF report. Dashboard and PDF follow LUXTRONIC-DESIGN-GUIDELINES.md (compact header, 1080p
 layout) - keep new UI within them. See [README.md](README.md) for run/deploy commands and judgment calls.
 
